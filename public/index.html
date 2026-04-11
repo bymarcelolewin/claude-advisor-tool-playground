@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Claude Advisor Tool Playground</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header>
+      <h1>
+        <svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"></circle>
+          <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+        </svg>
+        <span>Claude Advisor Tool Playground</span>
+      </h1>
+      <div class="header-actions">
+        <label class="header-select">
+          Executor
+          <select id="executor">
+            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+            <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
+            <option value="claude-opus-4-6">claude-opus-4-6</option>
+          </select>
+        </label>
+        <label class="header-select">
+          Advisor
+          <select id="advisor">
+            <option value="claude-opus-4-6" selected>claude-opus-4-6</option>
+          </select>
+        </label>
+        <label class="header-select" title="Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.">
+          Mode
+          <select id="mode">
+            <option value="advisor" selected>Advisor only</option>
+            <option value="advisor_exec">Advisor vs executor-model-solo</option>
+            <option value="advisor_adv">Advisor vs advisor-model-solo</option>
+            <option value="all">All three (3× cost)</option>
+          </select>
+        </label>
+      </div>
+      <div class="header-settings">
+        <button id="toggle-settings" class="btn-icon" title="Settings" aria-label="Settings">⚙</button>
+      </div>
+    </header>
+
+    <div id="settings-panel" class="settings-modal" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+      <div class="settings-backdrop" data-close></div>
+      <div class="settings-card">
+        <div class="settings-card-header">
+          <h2 id="settings-title">Settings</h2>
+          <button type="button" class="btn-close" data-close aria-label="Close settings">×</button>
+        </div>
+        <div class="settings-card-body">
+
+      <!-- Section: Anthropic API -->
+      <details class="settings-section" open>
+        <summary class="settings-section-header">
+          <span class="settings-section-title">Anthropic API</span>
+          <span class="settings-section-desc-inline">Used for chat and the Anthropic evaluator.</span>
+          <span class="settings-section-toggle">▾</span>
+        </summary>
+        <div class="settings-section-body">
+          <div class="settings-grid">
+            <div class="setting full">
+              <label for="api-key">
+                Anthropic API key
+                <span class="setting-hint" id="api-key-hint">Stored in your browser's localStorage on this machine only.</span>
+              </label>
+              <input
+                id="api-key"
+                type="password"
+                placeholder="sk-ant-..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Section: Chat & Advisor -->
+      <details class="settings-section" open>
+        <summary class="settings-section-header">
+          <span class="settings-section-title">Chat & Advisor</span>
+          <span class="settings-section-desc-inline">Tuning for how the executor + advisor tool runs during chat.</span>
+          <span class="settings-section-toggle">▾</span>
+        </summary>
+        <div class="settings-section-body">
+          <div class="settings-grid">
+            <div class="setting">
+              <label for="max-tokens">
+                max_tokens
+                <span class="setting-hint">Executor output cap. Does not bound advisor.</span>
+              </label>
+              <input id="max-tokens" type="number" min="256" max="32000" step="256" value="8192" />
+            </div>
+
+            <div class="setting">
+              <label for="advisor-caching">
+                Advisor caching
+                <span class="setting-hint">Enables prompt caching for the advisor's own transcript. Breaks even at ≈3 advisor calls per conversation.</span>
+              </label>
+              <label class="checkbox-row">
+                <input id="advisor-caching" type="checkbox" />
+                <span>Enable advisor-side caching</span>
+              </label>
+            </div>
+
+            <div class="setting full">
+              <label for="system-prompt">
+                System prompt
+                <span class="setting-hint">Prefilled with the advisor timing + treatment blocks from the docs. Edit freely. Content inside <code>&lt;!-- advisor:only --&gt;</code> sentinels is stripped from baseline branches.</span>
+              </label>
+              <textarea id="system-prompt" rows="8"></textarea>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Section: Quality Evaluation -->
+      <details class="settings-section" open>
+        <summary class="settings-section-header">
+          <span class="settings-section-title">Quality Evaluation</span>
+          <span class="settings-section-desc-inline">LLM-as-judge scoring for trace turns. Opt-in per turn.</span>
+          <span class="settings-section-toggle">▾</span>
+        </summary>
+        <div class="settings-section-body">
+          <p class="settings-section-desc">
+            Click the <strong>Evaluate</strong> button on any trace turn to score its branches. Each evaluation makes two judge calls with swapped candidate orderings to cancel position bias, then averages the scores. <em>LLM evaluations are subjective — treat scores as a directional signal, not a measurement.</em>
+          </p>
+
+          <div class="settings-grid">
+            <div class="setting full">
+              <label for="eval-provider">
+                Evaluator provider
+                <span class="setting-hint">Anthropic uses <code>claude-opus-4-6</code>. OpenAI uses <code>gpt-5.4</code>. Model names are hardcoded — update them in <code>server.js</code> when new models ship.</span>
+              </label>
+              <select id="eval-provider">
+                <option value="anthropic" selected>Anthropic · claude-opus-4-6</option>
+                <option value="openai">OpenAI · gpt-5.4</option>
+              </select>
+            </div>
+
+            <div class="setting full" id="openai-key-wrapper" style="display: none">
+              <label for="openai-key">
+                OpenAI API key
+                <span class="setting-hint">Required only when using OpenAI as the evaluator. Stored in localStorage on this machine.</span>
+              </label>
+              <input
+                id="openai-key"
+                type="password"
+                placeholder="sk-..."
+                autocomplete="off"
+                spellcheck="false"
+              />
+            </div>
+
+            <div class="setting full">
+              <label for="judge-prompt">
+                Judge prompt / rubric
+                <span class="setting-hint">The instructions sent to the evaluator. You can edit the rubric, scoring dimensions, and anti-bias rules. The server appends the actual user prompt + blinded candidate responses at the end.</span>
+              </label>
+              <textarea id="judge-prompt" rows="14"></textarea>
+            </div>
+          </div>
+        </div>
+      </details>
+
+      <!-- Section: Notices & Disclaimers (collapsed by default — reference info, not needed every session) -->
+      <details class="settings-section">
+        <summary class="settings-section-header">
+          <span class="settings-section-title">Notices & Disclaimers</span>
+          <span class="settings-section-desc-inline">Security scope, pricing caveats.</span>
+          <span class="settings-section-toggle">▾</span>
+        </summary>
+        <div class="settings-section-body">
+          <div class="settings-notice">
+            <strong>Security:</strong> this server binds to <code>127.0.0.1</code> only. Do not expose it on a network. Your API keys are sent from this page to the local backend and forwarded to Anthropic or OpenAI — they are never logged.
+          </div>
+          <div class="settings-notice">
+            <strong>Cost estimates:</strong> all est. cost values in the trace pane use public list prices (Haiku 4.5 $1/$5, Sonnet 4.6 $3/$15, Opus 4.6 $15/$75, gpt-5.4 ~$5/$15 per MTok in/out; <code>cache_r</code> ≈ 10% of input; <code>cache_w</code> ≈ 125% of input). Approximate — verify against current pricing. Prices are hardcoded in <code>public/app.js</code>.
+          </div>
+        </div>
+      </details>
+
+      <div class="settings-footer">
+        <div class="settings-footer-buttons">
+          <span id="settings-saved-indicator" class="saved-indicator">Saved automatically</span>
+          <button type="button" class="btn-primary" data-close>Done</button>
+        </div>
+      </div>
+        </div>
+      </div>
+    </div>
+
+    <main>
+      <section id="chat-pane">
+        <div class="chat-header">
+          <span class="chat-title">
+            <svg class="pane-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+            </svg>
+            <span>Chat</span>
+          </span>
+          <button id="reset" class="btn-icon" title="New conversation" aria-label="New conversation">＋</button>
+        </div>
+        <div id="messages"></div>
+        <form id="chat-form">
+          <textarea
+            id="user-input"
+            rows="1"
+            placeholder="Type a message… (Shift+Enter for newline)"
+          ></textarea>
+          <button type="submit" id="send" title="Send message" aria-label="Send">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 19V5"></path>
+              <path d="M5 12l7-7 7 7"></path>
+            </svg>
+          </button>
+        </form>
+      </section>
+
+      <section id="trace-pane">
+        <div class="trace-header">
+          <span class="trace-title">
+            <svg class="pane-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline>
+            </svg>
+            <span>Trace</span>
+          </span>
+        </div>
+        <div id="trace"></div>
+      </section>
+    </main>
+
+    <!-- Reusable confirm modal -->
+    <div id="confirm-modal" class="confirm-modal" role="dialog" aria-modal="true">
+      <div class="confirm-backdrop" data-confirm-close></div>
+      <div class="confirm-card">
+        <h3 class="confirm-title" id="confirm-title">Confirm</h3>
+        <div class="confirm-body" id="confirm-body"></div>
+        <div class="confirm-actions">
+          <button type="button" class="btn-ghost" id="confirm-cancel">Cancel</button>
+          <button type="button" class="btn-danger" id="confirm-ok">OK</button>
+        </div>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
