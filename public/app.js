@@ -159,8 +159,17 @@ function branchesForMode(mode) {
 // ============================================================================
 // DOM handles
 // ============================================================================
-const sessionId = crypto.randomUUID();
 const $ = (sel) => document.querySelector(sel);
+
+// Per-branch conversation histories, maintained client-side. The server is
+// stateless — these are sent on every /api/chat request.
+const branchHistories = { advisor: [], executorSolo: [], advisorSolo: [] };
+
+function resetBranchHistories() {
+  branchHistories.advisor = [];
+  branchHistories.executorSolo = [];
+  branchHistories.advisorSolo = [];
+}
 
 const messagesEl = $("#messages");
 const traceEl = $("#trace");
@@ -182,6 +191,7 @@ const evalProviderEl = $("#eval-provider");
 const openaiKeyEl = $("#openai-key");
 const openaiKeyWrapperEl = $("#openai-key-wrapper");
 const judgePromptEl = $("#judge-prompt");
+const syncPanesEl = $("#sync-panes");
 
 // ============================================================================
 // Settings persistence
@@ -236,6 +246,13 @@ function updateOpenAIKeyVisibility() {
   } else {
     openaiKeyWrapperEl.style.display = "none";
   }
+}
+
+// If there's no Anthropic API key stored, auto-open the Anthropic API section
+// so it's immediately visible when the user opens settings.
+const sectionAnthropicApi = $("#section-anthropic-api");
+if (!apiKeyEl.value.trim() && sectionAnthropicApi) {
+  sectionAnthropicApi.open = true;
 }
 
 // First-launch onboarding handled by the welcome slideshow below.
@@ -315,7 +332,9 @@ function escapeHtml(s) {
   return String(s ?? "")
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 function addMessage(role, text, cls = "", parent = messagesEl) {
@@ -354,9 +373,18 @@ function addMessage(role, text, cls = "", parent = messagesEl) {
   return div;
 }
 
+function syncTurnCollapse(turnIdx, collapsed) {
+  if (!syncPanesEl || !syncPanesEl.checked) return;
+  const chatTurn = messagesEl.querySelector(`.chat-turn[data-turn="${turnIdx}"]`);
+  const traceGroup = traceEl.querySelector(`.turn-group[data-turn="${turnIdx}"]`);
+  if (chatTurn) chatTurn.classList.toggle("collapsed", collapsed);
+  if (traceGroup) traceGroup.classList.toggle("collapsed", collapsed);
+}
+
 function createChatTurn(turnIdx, previewText) {
   const wrap = document.createElement("div");
   wrap.className = "chat-turn";
+  wrap.dataset.turn = turnIdx;
 
   const header = document.createElement("div");
   header.className = "chat-turn-header";
@@ -373,7 +401,10 @@ function createChatTurn(turnIdx, previewText) {
   body.className = "chat-turn-body";
   wrap.appendChild(body);
 
-  header.addEventListener("click", () => wrap.classList.toggle("collapsed"));
+  header.addEventListener("click", () => {
+    wrap.classList.toggle("collapsed");
+    syncTurnCollapse(turnIdx, wrap.classList.contains("collapsed"));
+  });
 
   messagesEl.appendChild(wrap);
   messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -781,8 +812,8 @@ async function send(userText) {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({
-        sessionId,
         userMessage: userText,
+        histories: branchHistories,
         executorModel: executorEl.value,
         advisorModel: advisorEl.value,
         systemPrompt: systemEl.value,
@@ -806,7 +837,7 @@ async function send(userText) {
     const data = await res.json();
     const runs = data.runs || {};
 
-    // Update chat bubbles
+    // Update chat bubbles and persist successful branches to local history.
     for (const b of activeBranches) {
       const run = runs[b];
       if (!run || run.error) {
@@ -816,12 +847,15 @@ async function send(userText) {
           pendingBubbles[b],
           extractAssistantText(run.content) || "(no text output)"
         );
+        branchHistories[b].push({ role: "user", content: userText });
+        branchHistories[b].push({ role: "assistant", content: run.content });
       }
     }
 
     // Build the turn group wrapper: header (always visible) + body (collapsible)
     const group = document.createElement("div");
     group.className = "turn-group";
+    group.dataset.turn = currentTurn;
 
     const groupHeader = document.createElement("div");
     groupHeader.className = "turn-group-header";
@@ -891,7 +925,10 @@ async function send(userText) {
     group.appendChild(groupBody);
 
     // Click the group header (but not the inner turn cards) to collapse/expand
-    groupHeader.addEventListener("click", () => group.classList.toggle("collapsed"));
+    groupHeader.addEventListener("click", () => {
+      group.classList.toggle("collapsed");
+      syncTurnCollapse(currentTurn, group.classList.contains("collapsed"));
+    });
 
     // Register turn state so the Evaluate button can find this turn's data later.
     // Build a map of branch -> response text (for branches that actually returned).
@@ -1133,14 +1170,13 @@ function renderEvalPanel(turnIdx) {
       : BRANCHES[winnerBranch]?.label || winnerBranch || "—";
   const winnerCls =
     winnerBranch && winnerBranch !== "tie" ? BRANCHES[winnerBranch]?.cls || "" : "";
+  const safeConfidence = ["low", "medium", "high"].includes(data.confidence) ? data.confidence : "medium";
   verdict.innerHTML = `
     <span class="winner ${winnerCls}">
       <span class="verdict-label">Winner</span>
       <strong>${escapeHtml(winnerLabel)}</strong>
     </span>
-    <span class="confidence confidence-${data.confidence || "medium"}">${escapeHtml(
-    data.confidence || "medium"
-  )} confidence</span>
+    <span class="confidence confidence-${safeConfidence}">${escapeHtml(safeConfidence)} confidence</span>
   `;
   body.appendChild(verdict);
 
@@ -1278,13 +1314,8 @@ resetBtn.addEventListener("click", async () => {
   });
   if (!ok) return;
 
-  await fetch("/api/reset", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({ sessionId }),
-  });
+  resetBranchHistories();
   messagesEl.innerHTML = "";
-  // Clear turn groups, system notes, and turn state
   traceEl.querySelectorAll(".turn-group, .system-note").forEach((el) => el.remove());
   turnState.clear();
   turnCounter = 0;
@@ -1396,6 +1427,29 @@ if (resetWelcomeBtn) {
     try { localStorage.removeItem(WELCOME_SEEN_KEY); } catch {}
     closeSettings();
     openWelcome();
+  });
+}
+
+// "Factory reset" button — clears all localStorage + conversation state and
+// reloads the page to first-launch state.
+const factoryResetBtn = $("#factory-reset-btn");
+if (factoryResetBtn) {
+  factoryResetBtn.addEventListener("click", async () => {
+    const ok = await showConfirm({
+      title: "Factory reset?",
+      body:
+        "This will erase all settings (including API keys), conversation history, and preferences. The app will return to its first-launch state. This cannot be undone.",
+      okLabel: "Erase everything",
+      cancelLabel: "Cancel",
+      okVariant: "danger",
+    });
+    if (!ok) return;
+
+    resetBranchHistories();
+    try { localStorage.removeItem(STORAGE_KEY); } catch {}
+    try { localStorage.removeItem(WELCOME_SEEN_KEY); } catch {}
+    closeSettings();
+    location.reload();
   });
 }
 

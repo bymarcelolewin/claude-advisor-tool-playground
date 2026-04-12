@@ -14,28 +14,90 @@ app.use(express.static(join(__dirname, "public")));
 // can both reference the same files (e.g. images/advisor-flow.svg).
 app.use("/images", express.static(join(__dirname, "images")));
 
-// Bind to loopback only for safety. Do NOT change unless you know what you're doing.
-const HOST = "127.0.0.1";
+const HOST = "0.0.0.0";
 const PORT = process.env.PORT || 3000;
 
-/**
- * In-memory conversation store.
- * sessionId -> { advisor: [...], executorSolo: [...], advisorSolo: [...] }
- * Each branch maintains its own independent message history so that
- * conversations diverge naturally when compare mode is on.
- */
-const sessions = new Map();
+// ---------------------------------------------------------------------------
+// Security headers + HTTPS enforcement.
+// The x-forwarded-proto check ensures these only activate behind a reverse
+// proxy (Railway, Render, etc.) and are skipped on localhost.
+// ---------------------------------------------------------------------------
+app.use((req, res, next) => {
+  const proto = req.headers["x-forwarded-proto"];
 
-function getSession(sessionId) {
-  if (!sessions.has(sessionId)) {
-    sessions.set(sessionId, {
-      advisor: [],
-      executorSolo: [],
-      advisorSolo: [],
-    });
+  // Redirect HTTP → HTTPS when behind a TLS-terminating proxy.
+  if (proto === "http") {
+    return res.redirect(301, `https://${req.headers.host}${req.url}`);
   }
-  return sessions.get(sessionId);
-}
+
+  // HSTS — only when we know we're behind HTTPS.
+  if (proto === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains");
+  }
+
+  // Always-safe headers (harmless on localhost).
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+
+  next();
+});
+
+// ---------------------------------------------------------------------------
+// CORS — only allow requests from the same origin (the page we served).
+// Same-origin requests omit the Origin header, so those pass through.
+// Cross-origin requests (other sites trying to use our API) are blocked.
+// ---------------------------------------------------------------------------
+app.use("/api", (req, res, next) => {
+  const origin = req.headers.origin;
+  if (!origin) return next(); // same-origin — no Origin header sent
+
+  const proto = req.headers["x-forwarded-proto"] || req.protocol;
+  const host = req.headers["x-forwarded-host"] || req.headers.host;
+  const self = `${proto}://${host}`;
+
+  if (origin === self) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
+    res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (req.method === "OPTIONS") return res.sendStatus(204);
+    return next();
+  }
+
+  return res.status(403).json({ error: "Cross-origin requests are not allowed." });
+});
+
+// ---------------------------------------------------------------------------
+// Rate limiting — simple in-memory per-IP limiter. No extra dependencies.
+// Allows RATE_LIMIT requests per RATE_WINDOW_MS per IP on /api/* routes.
+// ---------------------------------------------------------------------------
+const RATE_LIMIT = parseInt(process.env.RATE_LIMIT, 10) || 60;
+const RATE_WINDOW_MS = parseInt(process.env.RATE_WINDOW_MS, 10) || 60 * 60 * 1000; // 1 hour
+const ipHits = new Map();
+
+setInterval(() => ipHits.clear(), RATE_WINDOW_MS);
+
+app.use("/api", (req, res, next) => {
+  const ip = req.headers["x-forwarded-for"]?.split(",")[0]?.trim() || req.ip;
+  const now = Date.now();
+  let entry = ipHits.get(ip);
+  if (!entry || now - entry.start > RATE_WINDOW_MS) {
+    entry = { start: now, count: 0 };
+    ipHits.set(ip, entry);
+  }
+  entry.count++;
+  res.setHeader("X-RateLimit-Limit", RATE_LIMIT);
+  res.setHeader("X-RateLimit-Remaining", Math.max(0, RATE_LIMIT - entry.count));
+
+  if (entry.count > RATE_LIMIT) {
+    return res.status(429).json({ error: "Rate limit exceeded. Try again later." });
+  }
+  next();
+});
+
+// Server is stateless — per-branch conversation histories are maintained by
+// the client and sent on each request. Nothing is stored in server memory.
 
 function clientFor(apiKey) {
   const key = apiKey && apiKey.trim();
@@ -86,8 +148,8 @@ function branchesForMode(mode) {
 app.post("/api/chat", async (req, res) => {
   try {
     const {
-      sessionId,
       userMessage,
+      histories,
       executorModel,
       advisorModel,
       systemPrompt,
@@ -97,20 +159,21 @@ app.post("/api/chat", async (req, res) => {
       mode,
     } = req.body || {};
 
-    if (!sessionId || !userMessage || !executorModel || !advisorModel) {
+    if (!userMessage || !executorModel || !advisorModel) {
       return res.status(400).json({
-        error: "sessionId, userMessage, executorModel, advisorModel required",
+        error: "userMessage, executorModel, advisorModel required",
       });
     }
 
     const client = clientFor(apiKey);
-    const session = getSession(sessionId);
     const activeBranches = branchesForMode(mode || "advisor");
     const baselinePrompt = stripAdvisorOnly(systemPrompt || "");
 
-    // Append the user message to every active branch before dispatch.
+    // Client sends per-branch histories (prior turns only). We append the new
+    // user message here before dispatching to the API.
+    const branchMessages = {};
     for (const branch of activeBranches) {
-      session[branch].push({ role: "user", content: userMessage });
+      branchMessages[branch] = [...(histories?.[branch] || []), { role: "user", content: userMessage }];
     }
 
     const buildAdvisorParams = () => {
@@ -126,7 +189,7 @@ app.post("/api/chat", async (req, res) => {
         model: executorModel,
         max_tokens: maxTokens || 8192,
         tools: [advisorTool],
-        messages: session.advisor,
+        messages: branchMessages.advisor,
       };
       if (systemPrompt && systemPrompt.trim()) params.system = systemPrompt;
       return params;
@@ -136,7 +199,7 @@ app.post("/api/chat", async (req, res) => {
       const params = {
         model: executorModel,
         max_tokens: maxTokens || 8192,
-        messages: session.executorSolo,
+        messages: branchMessages.executorSolo,
       };
       if (baselinePrompt) params.system = baselinePrompt;
       return params;
@@ -146,7 +209,7 @@ app.post("/api/chat", async (req, res) => {
       const params = {
         model: advisorModel,
         max_tokens: maxTokens || 8192,
-        messages: session.advisorSolo,
+        messages: branchMessages.advisorSolo,
       };
       if (baselinePrompt) params.system = baselinePrompt;
       return params;
@@ -215,15 +278,9 @@ app.post("/api/chat", async (req, res) => {
     // Fire all active branches in parallel.
     const settled = await Promise.all(activeBranches.map(callOne));
 
-    // Append successful responses to their branches; roll back user message
-    // on errored branches so the history stays valid (no two-user-msgs-in-a-row).
     const runs = {};
     for (const result of settled) {
       if (result.ok) {
-        session[result.branch].push({
-          role: "assistant",
-          content: result.content,
-        });
         runs[result.branch] = {
           content: result.content,
           usage: result.usage,
@@ -233,7 +290,6 @@ app.post("/api/chat", async (req, res) => {
           request: result.request,
         };
       } else {
-        session[result.branch].pop();
         runs[result.branch] = {
           error: result.error,
           duration_ms: result.duration_ms,
@@ -254,11 +310,8 @@ app.post("/api/chat", async (req, res) => {
   }
 });
 
-app.post("/api/reset", (req, res) => {
-  const { sessionId } = req.body || {};
-  if (sessionId) sessions.delete(sessionId);
-  res.json({ ok: true });
-});
+// /api/reset is no longer needed — the server is stateless. Conversation
+// history lives on the client and is cleared there on reset.
 
 // ============================================================================
 // Evaluation endpoint
@@ -558,6 +611,5 @@ app.post("/api/evaluate", async (req, res) => {
 });
 
 app.listen(PORT, HOST, () => {
-  console.log(`Advisor playground running at http://${HOST}:${PORT}`);
-  console.log("  Open the app and enter your Anthropic API key in the Settings modal (⚙).");
+  console.log(`Advisor playground running at http://localhost:${PORT}`);
 });

@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.1.0-blue)
+![Version](https://img.shields.io/badge/version-1.2.0-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
@@ -211,9 +211,29 @@ A large system prompt gets re-sent on every advisor call, which adds input token
 
 ## Security
 
-- The server binds to `127.0.0.1` only. It is **not** reachable from your network.
-- API keys live in your browser's `localStorage` on your own machine and are sent per-request to the local backend, which forwards them to `api.anthropic.com` or `api.openai.com`. The server never logs them, and the full-I/O request viewer explicitly whitelists fields returned to the client so no key can leak into the trace.
-- Don't expose this server on a public interface. If you want to share it, teammates should clone the repo and run their own copy.
+This app is designed so that the server never stores any user data. Whether you run it locally or use the hosted version, here's how your data is handled:
+
+**Your API keys**
+- Stored in your browser's `localStorage` on your machine — never on the server.
+- Sent per-request to the backend, which forwards them to `api.anthropic.com` or `api.openai.com` and immediately discards them. The server never logs, persists, or caches keys.
+- The full-I/O request viewer explicitly whitelists fields returned to the client, so no key can leak into the trace.
+
+**Your conversations**
+- Conversation history is held in your browser's memory (a JavaScript variable) and sent to the server on each request. The server uses it for the API call and then forgets it — no session store, no database, no files.
+- Closing or refreshing the tab wipes the conversation. There is nothing to clean up server-side.
+- No other user can access your conversation because it never exists on the server.
+
+**Server-side protections**
+- **CORS** — API routes only accept requests from the same origin (the page the server served). Other websites cannot use the server as a proxy.
+- **Rate limiting** — 60 requests per hour per IP on API routes, to prevent abuse.
+- **HTTPS enforcement** — when deployed behind a TLS proxy (Railway, Render, etc.), HTTP requests are redirected to HTTPS before any data is sent. HSTS is set so browsers remember to always use HTTPS.
+- **Security headers** — clickjack prevention (`X-Frame-Options: DENY`), MIME sniffing prevention (`X-Content-Type-Options: nosniff`), referrer policy, and permissions policy (camera/mic/geolocation disabled).
+- **XSS hardening** — all user and API content rendered in the UI is escaped through a hardened `escapeHtml()` function covering all five OWASP-recommended characters. The codebase has been audited (35 `innerHTML` sites checked).
+- **Payload cap** — request bodies are limited to 2MB.
+
+**Running locally**
+- When you run `npm start` on your own machine, the HTTPS redirect and HSTS headers are automatically skipped (they only activate behind a reverse proxy). Everything else works the same.
+- The server binds to `0.0.0.0`, which includes `localhost`. If you're on a trusted network this is fine; if not, a local firewall rule can restrict access to `127.0.0.1`.
 
 ---
 

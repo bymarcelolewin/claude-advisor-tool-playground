@@ -55,7 +55,7 @@
         <div class="settings-card-body">
 
       <!-- Section: Anthropic API -->
-      <details class="settings-section" open>
+      <details class="settings-section" id="section-anthropic-api">
         <summary class="settings-section-header">
           <span class="settings-section-title">Anthropic API</span>
           <span class="settings-section-desc-inline">Used for chat and the Anthropic evaluator.</span>
@@ -81,7 +81,7 @@
       </details>
 
       <!-- Section: Chat & Advisor -->
-      <details class="settings-section" open>
+      <details class="settings-section">
         <summary class="settings-section-header">
           <span class="settings-section-title">Chat & Advisor</span>
           <span class="settings-section-desc-inline">Tuning for how the executor + advisor tool runs during chat.</span>
@@ -120,7 +120,7 @@
       </details>
 
       <!-- Section: Quality Evaluation -->
-      <details class="settings-section" open>
+      <details class="settings-section">
         <summary class="settings-section-header">
           <span class="settings-section-title">Quality Evaluation</span>
           <span class="settings-section-desc-inline">LLM-as-judge scoring for trace turns. Opt-in per turn.</span>
@@ -188,6 +188,12 @@
             </div>
             <button type="button" class="btn-ghost" id="reset-welcome-btn">Show welcome again</button>
           </div>
+          <div class="settings-notice settings-notice-action settings-notice-danger">
+            <div>
+              <strong>Factory reset:</strong> clears everything — API keys, settings, conversation history, and welcome state. Returns the app to its first-launch state.
+            </div>
+            <button type="button" class="btn-danger btn-sm" id="factory-reset-btn">Factory reset</button>
+          </div>
         </div>
       </details>
 
@@ -236,6 +242,10 @@
             </svg>
             <span>Trace</span>
           </span>
+          <label class="sync-toggle" title="Sync collapse/expand between Chat and Trace panes">
+            <input type="checkbox" id="sync-panes" checked />
+            <span>Sync panes</span>
+          </label>
         </div>
         <div id="trace"></div>
       </section>

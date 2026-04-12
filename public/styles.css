@@ -602,8 +602,26 @@ main {
   background: var(--panel);
   display: flex;
   align-items: center;
+  justify-content: space-between;
   min-height: 52px;
   box-sizing: border-box;
+}
+
+.sync-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.sync-toggle input[type="checkbox"] {
+  width: 13px;
+  height: 13px;
+  accent-color: var(--turn-wrap-accent);
+  cursor: pointer;
 }
 
 .trace-header .trace-title {
@@ -2206,6 +2224,16 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   border: 1px solid var(--border);
   border-radius: 6px;
   color: var(--text);
+}
+
+.settings-notice-danger {
+  border-color: rgba(255, 107, 107, 0.25);
+}
+
+.btn-sm {
+  padding: 6px 12px;
+  font-size: 11px;
+  border-radius: 6px;
 }
 
 /* Clickable "Settings" link inside an error chat message */
