@@ -1,5 +1,10 @@
 # Claude Advisor Tool Playground
 
+![Version](https://img.shields.io/badge/version-1.0.0-blue)
+[![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
+
+![Claude Advisor Tool Playground](images/claude-advistor-tool-playground.png)
+
 A chat-loop web UI for testing and visualizing the [advisor tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool) (beta `advisor-tool-2026-03-01`) from Claude.
 
 - **Left pane (chat):** conversation thread with a floating input at the bottom. User prompts and color-coded assistant replies, grouped into collapsible per-turn containers that match the trace pane. Individual branch bubbles are also independently collapsible.
@@ -192,6 +197,8 @@ Per the docs, when the executor calls `advisor()`, the server forwards the **ful
 A large system prompt also gets re-read on every advisor call, which adds input tokens. Turn on **Advisor caching** in settings to absorb that cost after the first call (breaks even at ~3 advisor calls per conversation).
 
 ## Quality evaluation (LLM-as-judge)
+
+![Claude Advisor Tool Playground](images/evaluation.png)
 
 Cost and latency comparisons are easy. The harder question is **"which branch actually produced a better answer?"** — and for open-ended prompts there's no objective ground truth. This tool answers that with an **LLM-as-judge** approach: a strong model reads the outputs for a single trace turn and scores them on a fixed rubric.
 

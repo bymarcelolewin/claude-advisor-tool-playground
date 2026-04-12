@@ -293,7 +293,15 @@ function parseJudgeJSON(text) {
   if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
     cleaned = cleaned.slice(firstBrace, lastBrace + 1);
   }
-  return JSON.parse(cleaned);
+  try {
+    return JSON.parse(cleaned);
+  } catch (err) {
+    // Judges sometimes embed code/regex in reasoning strings with stray
+    // backslashes that aren't valid JSON escapes (e.g. \d, \s, Windows paths).
+    // Escape any backslash not followed by a valid JSON escape char and retry.
+    const repaired = cleaned.replace(/\\(?!["\\/bfnrtu])/g, "\\\\");
+    return JSON.parse(repaired);
+  }
 }
 
 // Un-blind scores/reasoning/winner by translating letters back to branch names.
