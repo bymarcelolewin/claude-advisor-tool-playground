@@ -14,6 +14,7 @@
           <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
         </svg>
         <span>Claude Advisor Tool Playground</span>
+        <span class="header-version" id="header-version"></span>
       </h1>
       <div class="header-actions">
         <label class="header-select">
@@ -41,6 +42,7 @@
         </label>
       </div>
       <div class="header-settings">
+        <button id="toggle-about" class="btn-icon" title="About" aria-label="About">ⓘ</button>
         <button id="toggle-settings" class="btn-icon" title="Settings" aria-label="Settings">⚙</button>
       </div>
     </header>
@@ -198,6 +200,13 @@
       </details>
 
       <div class="settings-footer">
+        <div class="settings-footer-info">
+          <span class="settings-version" id="settings-version"></span>
+          <span class="settings-links">
+            Built by <a href="https://www.ibuildwith.ai" target="_blank" rel="noopener">iBuildWith.ai</a>
+            · <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground" target="_blank" rel="noopener">Run it locally via GitHub</a>
+          </span>
+        </div>
         <div class="settings-footer-buttons">
           <span id="settings-saved-indicator" class="saved-indicator">Saved automatically</span>
           <button type="button" class="btn-primary" data-close>Done</button>
@@ -251,6 +260,26 @@
       </section>
     </main>
 
+    <!-- About modal -->
+    <div id="about-modal" class="about-modal" role="dialog" aria-modal="true">
+      <div class="about-backdrop" data-about-close></div>
+      <div class="about-card">
+        <div class="about-body">
+          <svg class="about-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+          </svg>
+          <h2 class="about-title">Claude Advisor Tool Playground <span class="about-version" id="about-version"></span></h2>
+          <p class="about-line">Created by <a href="https://www.ibuildwith.ai" target="_blank" rel="noopener">iBuildWith.ai</a></p>
+          <p class="about-line">Want to run it locally? Get it on <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground" target="_blank" rel="noopener">GitHub</a></p>
+          <p class="about-line">Contact <a href="mailto:marcelo@ibuildwith.ai">Marcelo Lewin</a></p>
+        </div>
+        <div class="about-footer">
+          <button type="button" class="btn-primary" data-about-close>OK</button>
+        </div>
+      </div>
+    </div>
+
     <!-- Welcome slideshow modal -->
     <div id="welcome-modal" class="welcome-modal" role="dialog" aria-modal="true" aria-labelledby="welcome-title">
       <div class="welcome-backdrop" data-welcome-close></div>
@@ -260,7 +289,8 @@
         <div class="welcome-slides">
           <!-- Slide 1: The advisor strategy -->
           <section class="welcome-slide" data-slide="0">
-            <h2 id="welcome-title">Welcome to the Advisor Tool Playground</h2>
+            <h2 id="welcome-title">Welcome to the Advisor Tool Playground <span class="welcome-version" id="welcome-version"></span></h2>
+            <p class="welcome-byline">Created by <a href="https://www.ibuildwith.ai" target="_blank" rel="noopener">iBuildWith.ai</a></p>
             <p class="welcome-lead">A hands-on sandbox for exploring Anthropic's <strong>advisor tool</strong> — a beta feature that lets a cheap, fast executor model consult a smarter advisor model mid-inference, only when it's actually needed.</p>
 
             <div class="welcome-diagram-wrap">

@@ -1,10 +1,12 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.2.0-blue)
+![Version](https://img.shields.io/badge/version-1.2.1-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
 ![Claude Advisor Tool Playground](images/claude-advistor-tool-playground.png)
+
+**[Try it live](https://advisor-tool-playground.up.railway.app/)** — no install needed, just bring your own Anthropic API key.
 
 A local web app for experimenting with Anthropic's [advisor tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool) (beta `advisor-tool-2026-03-01`). Send prompts through a fast executor model paired with a stronger advisor model, watch exactly what happened under the hood, compare against baselines running the same prompt, and ask a second LLM to score which response is actually better.
 

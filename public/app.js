@@ -192,6 +192,37 @@ const openaiKeyEl = $("#openai-key");
 const openaiKeyWrapperEl = $("#openai-key-wrapper");
 const judgePromptEl = $("#judge-prompt");
 const syncPanesEl = $("#sync-panes");
+const welcomeVersionEl = $("#welcome-version");
+const headerVersionEl = $("#header-version");
+const settingsVersionEl = $("#settings-version");
+const aboutVersionEl = $("#about-version");
+const aboutModalEl = $("#about-modal");
+const toggleAboutBtn = $("#toggle-about");
+
+fetch("/api/version")
+  .then((r) => r.json())
+  .then((d) => {
+    if (!d.version) return;
+    const v = `v${d.version}`;
+    if (welcomeVersionEl) welcomeVersionEl.textContent = v;
+    if (headerVersionEl) headerVersionEl.textContent = v;
+    if (settingsVersionEl) settingsVersionEl.textContent = v;
+    if (aboutVersionEl) aboutVersionEl.textContent = v;
+  })
+  .catch(() => {});
+
+function openAbout() { aboutModalEl.classList.add("open"); }
+function closeAbout() { aboutModalEl.classList.remove("open"); }
+
+toggleAboutBtn.addEventListener("click", openAbout);
+aboutModalEl.querySelectorAll("[data-about-close]").forEach((el) => {
+  el.addEventListener("click", closeAbout);
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && aboutModalEl.classList.contains("open")) {
+    closeAbout();
+  }
+});
 
 // ============================================================================
 // Settings persistence
