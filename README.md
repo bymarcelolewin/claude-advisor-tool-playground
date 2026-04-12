@@ -47,16 +47,18 @@ The catch: the executor decides when to escalate. If your prompt is too trivial,
 
 ## Quick start
 
-### Prerequisites
+You only need an **Anthropic API key** with access to the advisor beta. Optionally, an OpenAI API key if you want to use GPT as the quality judge.
 
-- **Node.js 18+** (the server uses native `fetch` and ES modules)
-- **An Anthropic API key** with access to the advisor beta
-- **Optional:** an OpenAI API key if you want to use GPT as the quality judge
+### Option 1: Use it live (no install)
 
-### Install and run
+Go to **[advisor-tool-playground.up.railway.app](https://advisor-tool-playground.up.railway.app/)** — the welcome slideshow will walk you through setup. Just paste your API key in Settings and start sending prompts.
+
+### Option 2: Run it locally
+
+Requires **Node.js 18+**.
 
 ```bash
-git clone <this-repo>
+git clone https://github.com/bymarcelolewin/claude-advisor-tool-playground.git
 cd claude-advisor-tool-playground
 npm install
 npm start
@@ -66,9 +68,21 @@ Open http://localhost:3000 in your browser.
 
 ### Enter your API key
 
-On first launch, the Settings modal opens automatically. Paste your Anthropic API key into the **Anthropic API** section and click **Done**. The key is stored in your browser's `localStorage` on your own machine — the server never persists it. There is no env-var option by design; all secrets stay in the browser.
+On first launch, the welcome slideshow walks you through the advisor tool and how the playground works. When you're ready, click **"Open Settings & add API key"** (or click `⚙` in the header at any time). Paste your Anthropic API key and close the modal.
+
+Your key is stored in your browser's `localStorage` and never leaves your machine — the server is fully stateless and never persists keys, conversations, or any user data.
 
 You're now ready to send prompts.
+
+---
+
+## Tech stack
+
+- **Backend:** Node.js + Express
+- **Frontend:** Vanilla JS (no frameworks)
+- **API:** [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-node) (`@anthropic-ai/sdk`)
+- **Hosting:** [Railway](https://railway.com)
+- **Evaluation:** Anthropic Claude Opus 4.6 or OpenAI GPT-5.4 (LLM-as-judge, via direct API calls — no additional SDKs)
 
 ---
 
