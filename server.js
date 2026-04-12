@@ -10,6 +10,9 @@ const ADVISOR_BETA = "advisor-tool-2026-03-01";
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(join(__dirname, "public")));
+// Serve the repo-root images/ folder so the running app and the GitHub README
+// can both reference the same files (e.g. images/advisor-flow.svg).
+app.use("/images", express.static(join(__dirname, "images")));
 
 // Bind to loopback only for safety. Do NOT change unless you know what you're doing.
 const HOST = "127.0.0.1";

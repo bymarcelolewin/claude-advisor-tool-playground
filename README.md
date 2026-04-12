@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.0.0-blue)
+![Version](https://img.shields.io/badge/version-1.1.0-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
@@ -16,6 +16,30 @@ The advisor tool is a beta feature that lets a cheaper executor model call a sma
 2. **Is the extra cost worth it** compared to running a single model on the same prompt?
 
 This playground hopes to answer both. Every turn is broken down into its individual API steps (executor → advisor call → executor continues) with full token counts and costs. Compare mode runs the same prompt through up to three paths in parallel so you can see cost, latency, and quality deltas side by side.
+
+---
+
+## The advisor strategy in 60 seconds
+
+> *"Frontier-level reasoning applies only when the executor needs it."*
+> — [The Advisor Strategy](https://claude.com/blog/the-advisor-strategy)
+
+Running a frontier model like Opus end-to-end is expensive. Running Sonnet or Haiku end-to-end is cheap but less capable on hard problems. The advisor strategy pairs a cheap **executor** with a smart **advisor** so that frontier-level reasoning kicks in only at the moments it actually matters.
+
+![Advisor flow: Executor escalates to Advisor only when needed](images/advisor-flow.svg)
+
+**Executor (Sonnet or Haiku)** drives the task end-to-end. It calls tools, reads results, iterates toward a solution, and produces all user-facing output. It pays the executor's rate for 95% of the tokens.
+
+**Advisor (Opus)** is invoked *by the executor* only when the executor decides a decision is hard. It doesn't call tools. It doesn't produce output. It reads the executor's transcript and returns a short plan — typically 400–700 tokens — then disappears. Those tokens are billed at Opus rates, separately.
+
+This inverts the traditional sub-agent pattern. Instead of a large orchestrator decomposing work and handing pieces to workers, a small executor drives execution and escalates only on hard decisions. It's simpler and has no cross-agent context overhead because the entire flow happens inside one `/v1/messages` call.
+
+**What the numbers look like** (from Anthropic's blog post):
+
+- **Sonnet + Opus advisor** vs. Sonnet solo: +2.7 points on SWE-bench Multilingual, and **11.9% cheaper** per agentic task (because the advisor prevents wasted exploratory work).
+- **Haiku + Opus advisor** vs. Haiku solo: BrowseComp score jumps from 19.7% → 41.2% — more than double — while still costing 85% less per task than Sonnet solo.
+
+The catch: the executor decides when to escalate. If your prompt is too trivial, the executor will skip the advisor entirely and you won't see the benefit. That's why this playground surfaces `advisor calls` and `steps` prominently in every trace — so you can tell at a glance whether the advisor actually fired.
 
 ---
 

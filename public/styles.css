@@ -1918,3 +1918,322 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   background: #d85757;
   border-color: #d85757;
 }
+
+/* ===== Welcome slideshow modal ===== */
+
+.welcome-modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  align-items: center;
+  justify-content: center;
+  padding: 30px 20px;
+  overflow-y: auto;
+}
+
+.welcome-modal.open { display: flex; }
+
+.welcome-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(3px);
+  z-index: 0;
+}
+
+.welcome-card {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 780px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(122, 162, 255, 0.08);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 60px);
+  overflow: hidden;
+}
+
+.welcome-close {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 2;
+}
+
+.welcome-slides {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 34px 40px 20px;
+}
+
+.welcome-slide {
+  display: none;
+  animation: welcomeFadeIn 0.25s ease;
+}
+
+.welcome-slide.active {
+  display: block;
+}
+
+@keyframes welcomeFadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.welcome-slide h2 {
+  margin: 0 0 14px;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: 0.2px;
+}
+
+.welcome-lead {
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  margin: 0 0 16px;
+}
+
+.welcome-body {
+  font-size: 13px;
+  line-height: 1.65;
+  color: #b9c0d2;
+  margin: 0 0 14px;
+}
+
+.welcome-body strong,
+.welcome-lead strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.welcome-footnote {
+  font-size: 11px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+.welcome-footnote a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.welcome-footnote a:hover {
+  text-decoration: underline;
+}
+
+.welcome-diagram-wrap {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px;
+  margin: 14px 0 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.welcome-diagram {
+  width: 100%;
+  max-width: 680px;
+  height: auto;
+  display: block;
+}
+
+.welcome-list {
+  margin: 0 0 14px;
+  padding-left: 20px;
+  color: #b9c0d2;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.welcome-list li {
+  margin-bottom: 8px;
+}
+
+.welcome-list strong {
+  color: var(--text);
+  font-weight: 600;
+}
+
+.welcome-list-numbered {
+  padding-left: 22px;
+}
+
+.welcome-list-small {
+  font-size: 12px;
+}
+
+.welcome-list-small li em {
+  color: #9ea6bd;
+}
+
+.welcome-tip {
+  font-size: 12px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--turn-wrap-accent);
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #b9c0d2;
+  line-height: 1.55;
+  margin: 14px 0 0;
+}
+
+.welcome-tip code {
+  background: var(--panel-3);
+  color: var(--accent);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 11px;
+}
+
+.welcome-cta {
+  text-align: center;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  margin: 14px 0 18px;
+}
+
+.welcome-cta-btn {
+  font-size: 14px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  border: 1px solid var(--executor);
+}
+
+.welcome-cta-hint {
+  margin: 10px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.welcome-footer {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
+.welcome-dontshow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.welcome-dontshow input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--executor);
+  cursor: pointer;
+}
+
+.welcome-nav {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.welcome-dots {
+  display: flex;
+  gap: 6px;
+}
+
+.welcome-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.15s, transform 0.15s;
+}
+
+.welcome-dot:hover {
+  background: var(--border);
+}
+
+.welcome-dot.active {
+  background: var(--executor);
+  border-color: var(--executor);
+  transform: scale(1.15);
+}
+
+.welcome-nav-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.welcome-nav-buttons button {
+  padding: 7px 16px;
+  border-radius: 6px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+}
+
+.welcome-nav-buttons button:disabled {
+  opacity: 0.35;
+}
+
+/* Settings notice with inline action button (used by Reset welcome) */
+.settings-notice-action {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.settings-notice-action button {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  color: var(--text);
+}
+
+/* Clickable "Settings" link inside an error chat message */
+.msg.error .open-settings-link {
+  color: #ffd9d9;
+  text-decoration: underline;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.msg.error .open-settings-link:hover {
+  color: #fff;
+}
+
+@media (max-width: 640px) {
+  .welcome-slides {
+    padding: 28px 22px 16px;
+  }
+  .welcome-slide h2 {
+    font-size: 19px;
+  }
+  .welcome-footer {
+    flex-direction: column;
+    gap: 12px;
+    padding: 14px 18px;
+  }
+  .welcome-nav {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

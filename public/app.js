@@ -238,10 +238,9 @@ function updateOpenAIKeyVisibility() {
   }
 }
 
-// Auto-open the settings modal on first launch if no Anthropic API key is stored.
-if (!apiKeyEl.value) {
-  settingsPanelEl.classList.add("open");
-}
+// First-launch onboarding handled by the welcome slideshow below.
+// If the user has already dismissed the welcome but still has no key,
+// the welcome-init code falls back to opening the settings modal directly.
 
 // ============================================================================
 // Settings modal open/close
@@ -322,7 +321,34 @@ function escapeHtml(s) {
 function addMessage(role, text, cls = "", parent = messagesEl) {
   const div = document.createElement("div");
   div.className = `msg ${role} ${cls}`.trim();
-  div.textContent = text;
+
+  // Errors that reference "the Settings modal" or "the settings" should have
+  // a clickable link that opens the settings modal.
+  if (cls === "error" && /settings/i.test(text)) {
+    const re = /(Settings modal|the settings)/i;
+    const match = text.match(re);
+    if (match) {
+      const before = text.slice(0, match.index);
+      const linkText = match[0];
+      const after = text.slice(match.index + linkText.length);
+      div.appendChild(document.createTextNode(before));
+      const link = document.createElement("a");
+      link.className = "open-settings-link";
+      link.textContent = linkText;
+      link.href = "#";
+      link.addEventListener("click", (e) => {
+        e.preventDefault();
+        openSettings();
+      });
+      div.appendChild(link);
+      div.appendChild(document.createTextNode(after));
+    } else {
+      div.textContent = text;
+    }
+  } else {
+    div.textContent = text;
+  }
+
   parent.appendChild(div);
   messagesEl.scrollTop = messagesEl.scrollHeight;
   return div;
@@ -1273,3 +1299,113 @@ function autoGrowInput() {
 inputEl.addEventListener("input", autoGrowInput);
 
 inputEl.focus();
+
+// ============================================================================
+// Welcome slideshow modal
+// ============================================================================
+const WELCOME_SEEN_KEY = "advisor-playground-welcome-seen-v1";
+const welcomeModalEl = $("#welcome-modal");
+const welcomeSlideEls = welcomeModalEl.querySelectorAll(".welcome-slide");
+const welcomePrevBtn = $("#welcome-prev");
+const welcomeNextBtn = $("#welcome-next");
+const welcomeDotsEl = $("#welcome-dots");
+const welcomeDontshowEl = $("#welcome-dontshow");
+const welcomeOpenSettingsBtn = $("#welcome-open-settings");
+const resetWelcomeBtn = $("#reset-welcome-btn");
+
+const WELCOME_SLIDE_COUNT = welcomeSlideEls.length;
+let welcomeCurrentSlide = 0;
+
+// Build the progress dots once.
+for (let i = 0; i < WELCOME_SLIDE_COUNT; i++) {
+  const dot = document.createElement("button");
+  dot.type = "button";
+  dot.className = "welcome-dot";
+  dot.setAttribute("aria-label", `Go to slide ${i + 1}`);
+  dot.addEventListener("click", () => showWelcomeSlide(i));
+  welcomeDotsEl.appendChild(dot);
+}
+
+function showWelcomeSlide(idx) {
+  welcomeCurrentSlide = Math.max(0, Math.min(WELCOME_SLIDE_COUNT - 1, idx));
+  welcomeSlideEls.forEach((slide, i) => {
+    slide.classList.toggle("active", i === welcomeCurrentSlide);
+  });
+  welcomeDotsEl.querySelectorAll(".welcome-dot").forEach((dot, i) => {
+    dot.classList.toggle("active", i === welcomeCurrentSlide);
+  });
+  welcomePrevBtn.disabled = welcomeCurrentSlide === 0;
+  welcomeNextBtn.textContent =
+    welcomeCurrentSlide === WELCOME_SLIDE_COUNT - 1 ? "Done" : "Next";
+}
+
+function openWelcome() {
+  welcomeDontshowEl.checked = false;
+  showWelcomeSlide(0);
+  welcomeModalEl.classList.add("open");
+}
+
+function closeWelcome() {
+  if (welcomeDontshowEl.checked) {
+    try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch {}
+  }
+  welcomeModalEl.classList.remove("open");
+
+  // If the user closed the welcome but still has no API key, nudge them by
+  // opening the settings modal so the flow isn't dead-ended.
+  if (!apiKeyEl.value.trim()) {
+    openSettings();
+  } else {
+    inputEl.focus();
+  }
+}
+
+welcomePrevBtn.addEventListener("click", () => showWelcomeSlide(welcomeCurrentSlide - 1));
+welcomeNextBtn.addEventListener("click", () => {
+  if (welcomeCurrentSlide === WELCOME_SLIDE_COUNT - 1) {
+    closeWelcome();
+  } else {
+    showWelcomeSlide(welcomeCurrentSlide + 1);
+  }
+});
+
+welcomeModalEl.querySelectorAll("[data-welcome-close]").forEach((el) => {
+  el.addEventListener("click", closeWelcome);
+});
+
+document.addEventListener("keydown", (e) => {
+  if (!welcomeModalEl.classList.contains("open")) return;
+  if (e.key === "Escape") closeWelcome();
+  else if (e.key === "ArrowRight") showWelcomeSlide(welcomeCurrentSlide + 1);
+  else if (e.key === "ArrowLeft") showWelcomeSlide(welcomeCurrentSlide - 1);
+});
+
+// "Open settings & add API key" button on the last slide — closes welcome
+// (remembering the don't-show preference) and jumps straight to settings.
+welcomeOpenSettingsBtn.addEventListener("click", () => {
+  if (welcomeDontshowEl.checked) {
+    try { localStorage.setItem(WELCOME_SEEN_KEY, "1"); } catch {}
+  }
+  welcomeModalEl.classList.remove("open");
+  openSettings();
+});
+
+// "Show welcome again" button in Settings → Notices & Disclaimers.
+if (resetWelcomeBtn) {
+  resetWelcomeBtn.addEventListener("click", () => {
+    try { localStorage.removeItem(WELCOME_SEEN_KEY); } catch {}
+    closeSettings();
+    openWelcome();
+  });
+}
+
+// Decide whether to show the welcome on load.
+let welcomeSeen = false;
+try { welcomeSeen = localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch {}
+
+if (!welcomeSeen) {
+  openWelcome();
+} else if (!apiKeyEl.value.trim()) {
+  // Welcome was previously dismissed but key is missing — open settings directly.
+  openSettings();
+}

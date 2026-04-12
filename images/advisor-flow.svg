@@ -1,0 +1,94 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 840 420" role="img" aria-label="Advisor flow diagram">
+  <title>Advisor flow: User prompts the Executor, which handles the task and escalates hard decisions to the Advisor before returning a final response.</title>
+
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#161922"/>
+      <stop offset="1" stop-color="#0f1115"/>
+    </linearGradient>
+
+    <linearGradient id="execGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#2b3a66"/>
+      <stop offset="1" stop-color="#1c2543"/>
+    </linearGradient>
+
+    <linearGradient id="advGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#4a2a6b"/>
+      <stop offset="1" stop-color="#2e1a45"/>
+    </linearGradient>
+
+    <linearGradient id="userGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#20403a"/>
+      <stop offset="1" stop-color="#132824"/>
+    </linearGradient>
+
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7aa2ff"/>
+    </marker>
+    <marker id="arrowPurple" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#c38bff"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6fc9b3"/>
+    </marker>
+
+    <filter id="softGlow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="b"/>
+      <feMerge>
+        <feMergeNode in="b"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <rect width="840" height="420" fill="url(#bgGrad)"/>
+
+  <!-- Title -->
+  <text x="420" y="36" text-anchor="middle" fill="#e6e8ee" font-family="-apple-system, system-ui, sans-serif" font-size="18" font-weight="600">The advisor strategy</text>
+  <text x="420" y="58" text-anchor="middle" fill="#8a91a3" font-family="-apple-system, system-ui, sans-serif" font-size="12">Executor drives the task — escalates only on hard decisions</text>
+
+  <!-- User box -->
+  <g>
+    <rect x="40" y="170" width="140" height="80" rx="12" ry="12" fill="url(#userGrad)" stroke="#6fc9b3" stroke-width="1.5"/>
+    <text x="110" y="200" text-anchor="middle" fill="#6fc9b3" font-family="-apple-system, system-ui, sans-serif" font-size="11" font-weight="600" letter-spacing="0.5">USER</text>
+    <text x="110" y="222" text-anchor="middle" fill="#e6e8ee" font-family="-apple-system, system-ui, sans-serif" font-size="13">Your prompt</text>
+  </g>
+
+  <!-- Executor box -->
+  <g>
+    <rect x="320" y="150" width="200" height="120" rx="14" ry="14" fill="url(#execGrad)" stroke="#7aa2ff" stroke-width="1.8" filter="url(#softGlow)"/>
+    <text x="420" y="180" text-anchor="middle" fill="#7aa2ff" font-family="-apple-system, system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="0.6">EXECUTOR</text>
+    <text x="420" y="204" text-anchor="middle" fill="#e6e8ee" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="600">Sonnet or Haiku</text>
+    <text x="420" y="228" text-anchor="middle" fill="#b5bccf" font-family="-apple-system, system-ui, sans-serif" font-size="11">Drives the task end-to-end</text>
+    <text x="420" y="246" text-anchor="middle" fill="#b5bccf" font-family="-apple-system, system-ui, sans-serif" font-size="11">Calls tools, iterates, decides</text>
+  </g>
+
+  <!-- Advisor box -->
+  <g>
+    <rect x="640" y="150" width="170" height="120" rx="14" ry="14" fill="url(#advGrad)" stroke="#c38bff" stroke-width="1.8" filter="url(#softGlow)"/>
+    <text x="725" y="180" text-anchor="middle" fill="#c38bff" font-family="-apple-system, system-ui, sans-serif" font-size="11" font-weight="700" letter-spacing="0.6">ADVISOR</text>
+    <text x="725" y="204" text-anchor="middle" fill="#e6e8ee" font-family="-apple-system, system-ui, sans-serif" font-size="14" font-weight="600">Opus</text>
+    <text x="725" y="228" text-anchor="middle" fill="#b5bccf" font-family="-apple-system, system-ui, sans-serif" font-size="11">Called when escalation</text>
+    <text x="725" y="246" text-anchor="middle" fill="#b5bccf" font-family="-apple-system, system-ui, sans-serif" font-size="11">is needed · ~400–700 tokens</text>
+  </g>
+
+  <!-- Arrow: User → Executor -->
+  <line x1="182" y1="210" x2="318" y2="210" stroke="#6fc9b3" stroke-width="2" marker-end="url(#arrowTeal)"/>
+  <text x="250" y="200" text-anchor="middle" fill="#6fc9b3" font-family="-apple-system, system-ui, sans-serif" font-size="10">prompt</text>
+
+  <!-- Arrow: Executor → Advisor -->
+  <path d="M 520 188 Q 580 160 640 188" fill="none" stroke="#c38bff" stroke-width="2" marker-end="url(#arrowPurple)"/>
+  <text x="580" y="148" text-anchor="middle" fill="#c38bff" font-family="-apple-system, system-ui, sans-serif" font-size="10">advisor() — "help me think"</text>
+
+  <!-- Arrow: Advisor → Executor (short plan) -->
+  <path d="M 640 232 Q 580 262 520 232" fill="none" stroke="#c38bff" stroke-width="2" stroke-dasharray="4 3" marker-end="url(#arrowPurple)"/>
+  <text x="580" y="286" text-anchor="middle" fill="#c38bff" font-family="-apple-system, system-ui, sans-serif" font-size="10">short plan · no tools · no output</text>
+
+  <!-- Arrow: Executor → User (response) -->
+  <path d="M 320 232 Q 250 280 180 232" fill="none" stroke="#7aa2ff" stroke-width="2" marker-end="url(#arrowBlue)"/>
+  <text x="250" y="300" text-anchor="middle" fill="#7aa2ff" font-family="-apple-system, system-ui, sans-serif" font-size="10">final response</text>
+
+  <!-- Bottom caption -->
+  <text x="420" y="370" text-anchor="middle" fill="#8a91a3" font-family="-apple-system, system-ui, sans-serif" font-size="11">All of this happens inside a single /v1/messages call.</text>
+  <text x="420" y="388" text-anchor="middle" fill="#8a91a3" font-family="-apple-system, system-ui, sans-serif" font-size="11">Executor tokens billed at its own rate · Advisor tokens billed separately at Opus rate.</text>
+</svg>
