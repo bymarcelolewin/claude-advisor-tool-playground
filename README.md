@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.2.1-blue)
+![Version](https://img.shields.io/badge/version-1.3.0-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
@@ -125,6 +125,10 @@ When multiple branches are active, the trace pane shows them side by side with *
 - ⚪ **Gray** = tied
 
 Each branch maintains its own independent conversation history, so follow-up turns diverge naturally — after turn 1, each branch is replying to its own previous output, not to a shared one.
+
+**Conversation totals dashboard.** Pinned at the top of the Trace pane, a cumulative scoreboard shows per-branch totals — input, output, cost, and time — across every turn in the conversation, plus a shared turn count. In compare modes, a small green `←` marks the lowest value in each tile so you can see which branch is ahead on efficiency at a glance. The delta pills answer *"how did this turn compare?"*; the dashboard answers *"which branch is winning over the whole conversation?"*
+
+**Mode is locked once a conversation starts.** The moment you send the first message, the Mode dropdown is disabled until you start a new conversation via the `＋` button. This is intentional — switching modes mid-conversation would give different branches different turn counts and (worse) cold-start histories, making the comparison meaningless.
 
 **Reset** (the `+` icon above the chat pane) clears all branches, the trace, and any evaluation results. It asks for confirmation first.
 
@@ -266,6 +270,12 @@ When you want to understand exactly why one branch's numbers differ from another
 - **Prices are hardcoded** in `public/app.js` under `PRICES` and in `server.js` as `EVAL_MODEL_ANTHROPIC` / `EVAL_MODEL_OPENAI`. Update those when models or pricing change.
 - **Compare mode multiplies cost.** "All three" mode uses roughly 3× the tokens of a single-branch run.
 - The advisor branch's total wall-clock time will usually exceed solo baselines because the advisor sub-inference runs serially inside the same request.
+
+---
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for the full release history, including the new **Conversation Totals Dashboard** shipped in v1.3.0.
 
 ---
 

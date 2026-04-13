@@ -171,8 +171,39 @@ function resetBranchHistories() {
   branchHistories.advisorSolo = [];
 }
 
+// Cumulative per-branch totals across all turns in the current conversation.
+// Feeds the totals dashboard pinned at the top of the Trace pane. Cleared
+// whenever the user starts a new conversation.
+function freshTotals() {
+  return { input: 0, output: 0, cost: 0, durationMs: 0, costUnknown: false };
+}
+const conversationTotals = {
+  advisor: freshTotals(),
+  executorSolo: freshTotals(),
+  advisorSolo: freshTotals(),
+};
+let conversationTurnCount = 0;
+
+function resetConversationTotals() {
+  conversationTotals.advisor = freshTotals();
+  conversationTotals.executorSolo = freshTotals();
+  conversationTotals.advisorSolo = freshTotals();
+  conversationTurnCount = 0;
+}
+
+function accumulateTurnTotals(branch, totals) {
+  const acc = conversationTotals[branch];
+  if (!acc || !totals) return;
+  acc.input += totals.input || 0;
+  acc.output += totals.output || 0;
+  acc.durationMs += totals.duration_ms || 0;
+  if (totals.cost == null) acc.costUnknown = true;
+  else acc.cost += totals.cost;
+}
+
 const messagesEl = $("#messages");
 const traceEl = $("#trace");
+const traceTotalsEl = $("#trace-totals");
 const formEl = $("#chat-form");
 const inputEl = $("#user-input");
 const sendBtn = $("#send");
@@ -340,20 +371,32 @@ function flashSavedIndicator() {
 // When the provider changes, toggle the OpenAI key field visibility
 evalProviderEl.addEventListener("change", updateOpenAIKeyVisibility);
 
-// Mode change also updates the trace column grid + shows a mid-conversation warning
+// Mode change updates the trace column grid. The selector is locked after
+// the first successful turn (see setModeLocked) so users can't change modes
+// mid-conversation — that would make the totals dashboard apples-to-oranges
+// and leave newly-activated branches without prior history context.
 modeEl.addEventListener("change", () => {
   updateTraceColumnCount();
-  if (turnCounter > 0) {
-    addSystemNote(
-      `Mode changed to "${modeEl.selectedOptions[0].text}". New turns will run the selected branches. Previous branch histories are retained independently.`
-    );
-  }
 });
 
 function updateTraceColumnCount() {
   const n = branchesForMode(modeEl.value).length;
   traceEl.style.setProperty("--cols", String(n));
   traceEl.dataset.cols = String(n);
+}
+
+const modeLabelEl = modeEl.closest("label");
+const MODE_TITLE_DEFAULT =
+  "Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.";
+const MODE_TITLE_LOCKED =
+  "Mode is locked once a conversation starts. Click ＋ to start a new chat and change modes.";
+
+function setModeLocked(locked) {
+  modeEl.disabled = locked;
+  if (modeLabelEl) {
+    modeLabelEl.title = locked ? MODE_TITLE_LOCKED : MODE_TITLE_DEFAULT;
+    modeLabelEl.classList.toggle("locked", locked);
+  }
 }
 
 // ============================================================================
@@ -667,14 +710,117 @@ function renderTurnSummary(totals) {
       <span class="pill">${totals.stepCount} step${totals.stepCount === 1 ? "" : "s"}</span>
     </div>
     <div class="summary-grid">
-      <div><div class="k">input</div><div class="v">${fmtNum(totals.input)}</div></div>
-      <div><div class="k">output</div><div class="v">${fmtNum(totals.output)}</div></div>
-      <div><div class="k">cache_r</div><div class="v">${fmtNum(totals.cache_r)}</div></div>
-      <div><div class="k">cache_w</div><div class="v">${fmtNum(totals.cache_w)}</div></div>
-      <div><div class="k">est. cost</div><div class="v">${totals.cost == null ? "—" : fmtCost(totals.cost)}</div></div>
+      <div><div class="k">in</div><div class="v">${fmtNum(totals.input)}</div></div>
+      <div><div class="k">out</div><div class="v">${fmtNum(totals.output)}</div></div>
+      <div><div class="k">cost</div><div class="v">${totals.cost == null ? "—" : fmtCost(totals.cost)}</div></div>
+      <div><div class="k">time</div><div class="v">${fmtDuration(totals.duration_ms)}</div></div>
     </div>
   `;
   return wrap;
+}
+
+// Cumulative per-branch totals shown in the strip pinned above the trace
+// list. Refreshed after every successful turn. Hidden entirely on an empty
+// conversation.
+function renderDashboard() {
+  if (!traceTotalsEl) return;
+
+  if (conversationTurnCount === 0) {
+    traceTotalsEl.hidden = true;
+    traceTotalsEl.innerHTML = "";
+    return;
+  }
+
+  const activeBranches = branchesForMode(modeEl.value);
+
+  // Each metric carries:
+  //   numFor   — the raw comparable number (used to pick the leader)
+  //   valueFor — the display string (already formatted)
+  //   known    — whether this branch's value is comparable (false = the cost
+  //              for that branch is unknown and should be excluded from the
+  //              leader calculation)
+  // Lower is better for all four metrics — fewer tokens, cheaper, faster.
+  const metrics = [
+    {
+      label: "in",
+      numFor:   (b) => conversationTotals[b].input,
+      valueFor: (b) => fmtNum(conversationTotals[b].input),
+      known:    ()  => true,
+    },
+    {
+      label: "out",
+      numFor:   (b) => conversationTotals[b].output,
+      valueFor: (b) => fmtNum(conversationTotals[b].output),
+      known:    ()  => true,
+    },
+    {
+      label: "cost",
+      numFor:   (b) => conversationTotals[b].cost,
+      valueFor: (b) => conversationTotals[b].costUnknown ? "—" : fmtCost(conversationTotals[b].cost),
+      known:    (b) => !conversationTotals[b].costUnknown,
+    },
+    {
+      label: "time",
+      numFor:   (b) => conversationTotals[b].durationMs,
+      valueFor: (b) => fmtDuration(conversationTotals[b].durationMs),
+      known:    ()  => true,
+    },
+  ];
+
+  // Only show a leader marker when there's an actual comparison to make.
+  const showLeader = activeBranches.length >= 2;
+
+  const tileHtml = metrics
+    .map((m) => {
+      const comparable = activeBranches.filter((b) => m.known(b));
+      const minN = comparable.length > 0
+        ? Math.min(...comparable.map((b) => m.numFor(b)))
+        : null;
+
+      const rows = activeBranches
+        .map((b) => {
+          const isLeader =
+            showLeader && m.known(b) && minN != null && m.numFor(b) === minN;
+          const marker = isLeader
+            ? `<span class="totals-leader" title="Lowest — leading on this metric">←</span>`
+            : "";
+          return `<span class="totals-tile-v ${BRANCHES[b].cls}">${escapeHtml(m.valueFor(b))}${marker}</span>`;
+        })
+        .join("");
+
+      return `
+        <div class="totals-tile">
+          <div class="totals-tile-k">${m.label}</div>
+          <div class="totals-tile-vstack">${rows}</div>
+        </div>
+      `;
+    })
+    .join("");
+
+  const turnsTile = `
+    <div class="totals-tile totals-tile-turns">
+      <div class="totals-tile-k">turns</div>
+      <div class="totals-tile-vstack">
+        <span class="totals-tile-v totals-tile-v-solo">${conversationTurnCount}</span>
+      </div>
+    </div>
+  `;
+
+  const legendHtml = activeBranches
+    .map(
+      (b) =>
+        `<span class="totals-legend-item ${BRANCHES[b].cls}">
+          <span class="totals-legend-dot"></span>${escapeHtml(BRANCHES[b].label)}
+          <span class="totals-legend-model">${escapeHtml(branchModelBadge(b))}</span>
+        </span>`
+    )
+    .join("");
+
+  traceTotalsEl.hidden = false;
+  traceTotalsEl.innerHTML = `
+    <div class="totals-grid">${tileHtml}${turnsTile}</div>
+    <div class="totals-legend">${legendHtml}</div>
+  `;
 }
 
 function renderTurnCard(turnIdx, branch, run, userText) {
@@ -820,6 +966,13 @@ const turnState = new Map();
 
 async function send(userText) {
   sendBtn.disabled = true;
+
+  // Lock the mode selector the moment the user hits send — gives immediate
+  // visual feedback that the conversation has started. If the send ends up
+  // failing before any turn is recorded, the finally block unlocks it again
+  // so the user can switch modes and retry.
+  const wasFirstTurn = conversationTurnCount === 0;
+  if (wasFirstTurn) setModeLocked(true);
 
   // Bump turn counter at the start so chat and trace share the same number.
   turnCounter += 1;
@@ -992,6 +1145,21 @@ async function send(userText) {
 
     traceEl.appendChild(group);
     traceEl.scrollTop = traceEl.scrollHeight;
+
+    // Accumulate per-branch totals for the conversation dashboard. A branch
+    // that errored has a null `totals` entry and contributes nothing.
+    let anyBranchSucceeded = false;
+    for (const b of activeBranches) {
+      const t = branchTotals[b];
+      if (t) {
+        accumulateTurnTotals(b, t);
+        anyBranchSucceeded = true;
+      }
+    }
+    if (anyBranchSucceeded) {
+      conversationTurnCount += 1;
+      renderDashboard();
+    }
   } catch (e) {
     for (const b of activeBranches) {
       clearBubbleTimer(pendingBubbles[b]);
@@ -1000,6 +1168,12 @@ async function send(userText) {
     addMessage("assistant", `Network error: ${e.message}`, "error", chatTurn);
   } finally {
     sendBtn.disabled = false;
+    // If this was supposed to be the first turn but nothing got recorded
+    // (network error, non-OK response, or every branch errored), release the
+    // mode lock so the user can change modes and retry.
+    if (wasFirstTurn && conversationTurnCount === 0) {
+      setModeLocked(false);
+    }
     inputEl.focus();
   }
 }
@@ -1346,10 +1520,13 @@ resetBtn.addEventListener("click", async () => {
   if (!ok) return;
 
   resetBranchHistories();
+  resetConversationTotals();
   messagesEl.innerHTML = "";
   traceEl.querySelectorAll(".turn-group, .system-note").forEach((el) => el.remove());
   turnState.clear();
   turnCounter = 0;
+  renderDashboard();
+  setModeLocked(false);
   inputEl.focus();
 });
 

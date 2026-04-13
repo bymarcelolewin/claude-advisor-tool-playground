@@ -684,6 +684,134 @@ main {
   font-size: 12px;
 }
 
+/* ============================================================================
+   Totals dashboard — pinned strip above the scrollable trace list.
+   Shows cumulative per-branch totals for the whole conversation: one tile
+   per metric (in / out / cost / time) plus a turns tile. Values inside each
+   tile are stacked and color-coded by branch.
+   ============================================================================ */
+.trace-totals {
+  padding: 10px 16px 12px;
+  background: var(--panel);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.trace-totals[hidden] {
+  display: none;
+}
+
+.totals-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(90px, 1fr)) minmax(60px, 70px);
+  gap: 8px;
+}
+
+.totals-tile {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 8px 7px;
+  text-align: center;
+  min-width: 0;
+}
+
+.totals-tile-k {
+  color: var(--muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  margin-bottom: 3px;
+}
+
+.totals-tile-vstack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.totals-tile-v {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.totals-tile-v.branch-advisor  { color: var(--advisor); }
+.totals-tile-v.branch-exec-solo { color: var(--exec-solo); }
+.totals-tile-v.branch-adv-solo  { color: var(--adv-solo); }
+
+.totals-leader {
+  color: #7ed58a;
+  margin-left: 5px;
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--mono);
+  display: inline-block;
+}
+
+.totals-tile-turns .totals-tile-vstack {
+  justify-content: center;
+  height: 100%;
+}
+
+.totals-tile-v-solo {
+  color: var(--text);
+  font-size: 16px;
+}
+
+.totals-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-top: 8px;
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.totals-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.totals-legend-model {
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0;
+  font-family: var(--mono);
+  font-size: 10px;
+  margin-left: 2px;
+}
+
+.totals-legend-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  background: var(--muted);
+}
+
+.totals-legend-item.branch-advisor  .totals-legend-dot { background: var(--advisor); }
+.totals-legend-item.branch-exec-solo .totals-legend-dot { background: var(--exec-solo); }
+.totals-legend-item.branch-adv-solo  .totals-legend-dot { background: var(--adv-solo); }
+
+.totals-legend-item.branch-advisor  { color: var(--advisor); }
+.totals-legend-item.branch-exec-solo { color: var(--exec-solo); }
+.totals-legend-item.branch-adv-solo  { color: var(--adv-solo); }
+
+/* Locked mode selector visual state */
+.header-select.locked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+.header-select.locked select {
+  cursor: not-allowed;
+}
+
 /* Turn container */
 .turn {
   border: 1px solid var(--border);
@@ -808,7 +936,7 @@ main {
 
 .summary-grid {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: 6px;
 }
 
@@ -1300,7 +1428,7 @@ main {
 #trace[data-cols="3"] .step-model { font-size: 9px; }
 #trace[data-cols="3"] .step-tokens { gap: 6px; }
 #trace[data-cols="3"] .step-tokens span { padding: 2px 6px; font-size: 10px; }
-#trace[data-cols="3"] .summary-grid { grid-template-columns: repeat(5, 1fr); gap: 3px; }
+#trace[data-cols="3"] .summary-grid { grid-template-columns: repeat(4, 1fr); gap: 3px; }
 #trace[data-cols="3"] .summary-grid > div { padding: 4px 4px; }
 #trace[data-cols="3"] .summary-grid .v { font-size: 11px; }
 
