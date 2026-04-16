@@ -159,6 +159,7 @@ app.post("/api/chat", async (req, res) => {
       systemPrompt,
       maxTokens,
       advisorCaching,
+      maxUses,
       effort,
       apiKey,
       mode,
@@ -200,6 +201,11 @@ app.post("/api/chat", async (req, res) => {
       };
       if (advisorCaching) {
         advisorTool.caching = { type: "ephemeral", ttl: "5m" };
+      }
+      // max_uses caps advisor calls per request. Only include when the client
+      // sent a positive integer; missing/null means unlimited.
+      if (Number.isInteger(maxUses) && maxUses > 0) {
+        advisorTool.max_uses = maxUses;
       }
       const params = {
         model: executorModel,

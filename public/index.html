@@ -85,6 +85,14 @@
               </label>
             </div>
 
+            <div class="setting">
+              <label for="max-uses">
+                Max advisor calls per request
+                <span class="setting-hint">Caps how many times the executor can consult the advisor in a single API request. Leave empty for unlimited. When reached, further advisor calls return an <code>advisor_tool_result_error</code> with <code>max_uses_exceeded</code> and the executor continues without further advice.</span>
+              </label>
+              <input id="max-uses" type="number" min="1" step="1" placeholder="unlimited" />
+            </div>
+
             <div class="setting full">
               <label for="system-prompt">
                 System prompt

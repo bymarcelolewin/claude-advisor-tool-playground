@@ -214,6 +214,7 @@ const advisorEl = $("#advisor");
 const modeEl = $("#mode");
 const maxTokensEl = $("#max-tokens");
 const advisorCachingEl = $("#advisor-caching");
+const maxUsesEl = $("#max-uses");
 const effortEl = $("#effort");
 const apiKeyEl = $("#api-key");
 const settingsPanelEl = $("#settings-panel");
@@ -279,6 +280,7 @@ function saveSettings() {
     mode: modeEl.value,
     maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
     advisorCaching: advisorCachingEl.checked,
+    maxUses: parseMaxUses(maxUsesEl.value),
     effort: effortToSave,
     systemPrompt: systemEl.value,
     evalProvider: evalProviderEl.value,
@@ -288,6 +290,15 @@ function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
 }
 
+// Parse and validate the max_uses input. Accepts positive integers only.
+// Returns null for empty, invalid, or non-integer values (null = unlimited).
+function parseMaxUses(raw) {
+  if (raw == null || raw === "") return null;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 1) return null;
+  return n;
+}
+
 function applySettings(s) {
   if (s.apiKey != null) apiKeyEl.value = s.apiKey;
   if (s.executor) executorEl.value = s.executor;
@@ -295,6 +306,7 @@ function applySettings(s) {
   if (s.mode) modeEl.value = s.mode;
   if (s.maxTokens) maxTokensEl.value = s.maxTokens;
   if (typeof s.advisorCaching === "boolean") advisorCachingEl.checked = s.advisorCaching;
+  if (s.maxUses != null && s.maxUses !== "") maxUsesEl.value = s.maxUses;
   if (s.effort) effortEl.value = s.effort;
   systemEl.value = s.systemPrompt || SUGGESTED_SYSTEM_PROMPT;
   if (s.evalProvider) evalProviderEl.value = s.evalProvider;
@@ -361,6 +373,7 @@ function flashSavedIndicator() {
   modeEl,
   maxTokensEl,
   advisorCachingEl,
+  maxUsesEl,
   effortEl,
   systemEl,
   evalProviderEl,
@@ -373,6 +386,14 @@ function flashSavedIndicator() {
     saveSettings();
     flashSavedIndicator();
   });
+});
+
+// Strip invalid characters from max_uses on blur so the field reflects what
+// will actually be sent. Empty = unlimited; anything else must parse as a
+// positive integer.
+maxUsesEl.addEventListener("blur", () => {
+  const parsed = parseMaxUses(maxUsesEl.value);
+  maxUsesEl.value = parsed == null ? "" : String(parsed);
 });
 
 // Effort availability coordinates two independent conditions:
@@ -730,7 +751,7 @@ function hasAdvisorError(step) {
   );
 }
 
-function renderStep(step, idx) {
+function renderStep(step, idx, opts = {}) {
   const card = document.createElement("div");
   const roleClass = step.role === "advisor" ? "step-advisor" : "step-executor";
   const errorClass = hasAdvisorError(step) ? " step-error" : "";
@@ -739,12 +760,26 @@ function renderStep(step, idx) {
   const cost = estCost(step.model, step.iter);
   const iter = step.iter;
 
-  const roleLabel =
-    step.role === "advisor"
-      ? "Advisor"
-      : step.blocks.some((b) => b.type === "server_tool_use")
+  // For advisor steps, show "Advisor · call N" or "Advisor · call N of M" when
+  // the user set a max_uses cap. This makes multi-call conversations easy to
+  // follow in the trace.
+  let roleLabel;
+  if (step.role === "advisor") {
+    const { advisorCallIdx, maxUses } = opts;
+    if (advisorCallIdx != null) {
+      const suffix =
+        Number.isInteger(maxUses) && maxUses > 0
+          ? `call ${advisorCallIdx} of ${maxUses}`
+          : `call ${advisorCallIdx}`;
+      roleLabel = `Advisor · ${suffix}`;
+    } else {
+      roleLabel = "Advisor";
+    }
+  } else {
+    roleLabel = step.blocks.some((b) => b.type === "server_tool_use")
       ? "Executor · calling advisor"
       : "Executor";
+  }
 
   card.innerHTML = `
     <div class="step-head">
@@ -796,12 +831,16 @@ function computeTotals(steps, run) {
   };
 }
 
-function renderTurnSummary(totals) {
+function renderTurnSummary(totals, maxUses) {
   const wrap = document.createElement("div");
   wrap.className = "turn-summary";
+  const advisorPill =
+    Number.isInteger(maxUses) && maxUses > 0
+      ? `${totals.advisorCalls} / ${maxUses} advisor call${maxUses === 1 ? "" : "s"}`
+      : `${totals.advisorCalls} advisor call${totals.advisorCalls === 1 ? "" : "s"}`;
   wrap.innerHTML = `
     <div class="summary-row">
-      <span class="pill pill-advisor">${totals.advisorCalls} advisor call${totals.advisorCalls === 1 ? "" : "s"}</span>
+      <span class="pill pill-advisor">${advisorPill}</span>
       <span class="pill">${totals.stepCount} step${totals.stepCount === 1 ? "" : "s"}</span>
     </div>
     <div class="summary-grid">
@@ -931,7 +970,7 @@ function renderDashboard() {
   `;
 }
 
-function renderTurnCard(turnIdx, branch, run, userText) {
+function renderTurnCard(turnIdx, branch, run, userText, opts = {}) {
   const turn = document.createElement("div");
   turn.className = `turn ${BRANCHES[branch].cls}`;
 
@@ -971,7 +1010,10 @@ function renderTurnCard(turnIdx, branch, run, userText) {
   `;
   turn.appendChild(header);
 
-  turn.appendChild(renderTurnSummary(totals));
+  // max_uses is only relevant for the advisor branch (baselines don't call it).
+  const maxUsesForBranch = branch === "advisor" ? opts.maxUses : null;
+
+  turn.appendChild(renderTurnSummary(totals, maxUsesForBranch));
 
   const body = document.createElement("div");
   body.className = "turn-body";
@@ -983,8 +1025,15 @@ function renderTurnCard(turnIdx, branch, run, userText) {
 
   const timeline = document.createElement("div");
   timeline.className = "timeline";
+  let advisorCallCounter = 0;
   steps.forEach((s, i) => {
-    timeline.appendChild(renderStep(s, i));
+    const stepOpts = {};
+    if (s.role === "advisor") {
+      advisorCallCounter += 1;
+      stepOpts.advisorCallIdx = advisorCallCounter;
+      stepOpts.maxUses = maxUsesForBranch;
+    }
+    timeline.appendChild(renderStep(s, i, stepOpts));
     if (i < steps.length - 1) {
       const arrow = document.createElement("div");
       arrow.className = "step-arrow";
@@ -1075,6 +1124,10 @@ const turnState = new Map();
 async function send(userText) {
   sendBtn.disabled = true;
 
+  // Capture max_uses at send time so the render reflects what was actually
+  // sent, even if the user edits the input while the request is in flight.
+  const turnMaxUses = parseMaxUses(maxUsesEl.value);
+
   // Lock all config selectors the moment the user hits send — gives immediate
   // visual feedback that the conversation has started. If the send fails
   // before any turn is recorded, the finally block unlocks them again so the
@@ -1116,6 +1169,7 @@ async function send(userText) {
         systemPrompt: systemEl.value,
         maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
         advisorCaching: advisorCachingEl.checked,
+        maxUses: turnMaxUses,
         effort: executorEl.value.startsWith("claude-haiku") ? null : effortEl.value,
         apiKey: apiKeyEl.value || undefined,
         mode,
@@ -1192,7 +1246,7 @@ async function send(userText) {
     for (const b of activeBranches) {
       const run = runs[b];
       if (!run) continue;
-      const { el, totals } = renderTurnCard(currentTurn, b, run, userText);
+      const { el, totals } = renderTurnCard(currentTurn, b, run, userText, { maxUses: turnMaxUses });
       branchTotals[b] = totals;
       turnRow.appendChild(el);
 

@@ -44,14 +44,14 @@ Add the `max_uses` input to settings and display advisor call counter in the tra
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 3.1 | Add max_uses input to settings | Add `<input type="number" min="1" step="1">` to Settings → Chat & Advisor section in `public/index.html`. Label: "Max advisor calls per request". Help text: "Leave empty for unlimited". | None | 🔴 Not Started | AGENT |
-| 3.2 | Validate max_uses input | In `public/app.js`, validate on input: strip non-numeric, reject decimals, reject zero and negatives. Empty = unlimited. Persist to localStorage (number or empty string). | 3.1 | 🔴 Not Started | AGENT |
-| 3.3 | Send max_uses to server | Include `maxUses` in the `/api/chat` request payload. | 3.2 | 🔴 Not Started | AGENT |
-| 3.4 | Add max_uses to advisor tool definition | In `server.js`, when `maxUses` is provided and is a positive integer, include `max_uses` in the advisor tool definition. Otherwise omit. | 3.3 | 🔴 Not Started | AGENT |
-| 3.5 | Show per-call counter on advisor step cards | In `public/app.js` trace rendering, show "Advisor call N" (or "Advisor call N of M" when max_uses is set) on each advisor step card. Count advisor iterations. | None | 🔴 Not Started | AGENT |
-| 3.6 | Show aggregate counter in turn summary | Enhance turn summary in `public/app.js` to show "N / M advisor calls" when max_uses is set, or just "N advisor calls" when unlimited. | 3.5 | 🔴 Not Started | AGENT |
-| 3.7 | Test phase 3 | USER tests: max_uses validation works, advisor respects the cap, counter displays correctly on step cards and turn summary. | 3.1-3.6 | 🔴 Not Started | USER |
-| 3.8 | Commit phase 3 | USER commits phase 3 to git. | 3.7 | 🔴 Not Started | USER |
+| 3.1 | Add max_uses input to settings | Added `<input type="number" min="1" step="1" placeholder="unlimited">` to Settings → Chat & Advisor. Label + detailed help text explaining cap behavior and `max_uses_exceeded` error. | None | 🟢 Completed | AGENT |
+| 3.2 | Validate max_uses input | Added `parseMaxUses()` helper that accepts positive integers only; empty/invalid/non-integer → null. Blur handler normalizes the input field. | 3.1 | 🟢 Completed | AGENT |
+| 3.3 | Send max_uses to server | `maxUses` captured at send-time via `turnMaxUses = parseMaxUses(maxUsesEl.value)` and included in the `/api/chat` request payload. | 3.2 | 🟢 Completed | AGENT |
+| 3.4 | Add max_uses to advisor tool definition | Server `buildAdvisorParams()` includes `max_uses` on the advisor tool only when client sent a positive integer. | 3.3 | 🟢 Completed | AGENT |
+| 3.5 | Show per-call counter on advisor step cards | `renderStep()` now accepts `opts.advisorCallIdx` + `opts.maxUses`. Shows "Advisor · call N of M" (cap set) or "Advisor · call N" (unlimited). `renderTurnCard()` counts advisor iterations and threads index through. | None | 🟢 Completed | AGENT |
+| 3.6 | Show aggregate counter in turn summary | `renderTurnSummary()` now accepts `maxUses` — shows "N / M advisor calls" when cap is set, otherwise "N advisor calls". Only applies to advisor branch. | 3.5 | 🟢 Completed | AGENT |
+| 3.7 | Test phase 3 | USER tested: max_uses validation works, server restart picked up max_uses in advisor tool definition, counter displays correctly on step cards ("Advisor · call 1 of 5") and turn summary ("N / M advisor calls"). Note: single-turn prompts often produce only 1 advisor call regardless of max_uses — the counter UI works correctly either way. | 3.1-3.6 | 🟢 Completed | USER |
+| 3.8 | Commit phase 3 | USER commits phase 3 to git. | 3.7 | 🟢 Completed | USER |
 
 ## Phase 4: Caching Dropdown
 
