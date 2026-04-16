@@ -720,6 +720,18 @@ function mapStepsToBlocks(content, iterations, executorModel, topLevelUsage) {
   return steps;
 }
 
+// Map Anthropic advisor error codes to human-readable messages. The request
+// itself succeeds when these fire — the executor sees the error in the tool
+// result and continues without further advice.
+const ADVISOR_ERROR_MESSAGES = {
+  max_uses_exceeded: "Advisor call limit reached for this request",
+  too_many_requests: "Advisor rate-limited",
+  overloaded: "Advisor capacity exceeded",
+  prompt_too_long: "Conversation too long for advisor",
+  execution_time_exceeded: "Advisor timed out",
+  unavailable: "Advisor unavailable",
+};
+
 function blockPreview(block) {
   const wrap = document.createElement("div");
   wrap.className = "produced-block";
@@ -733,9 +745,20 @@ function blockPreview(block) {
     if (c.type === "advisor_result") {
       wrap.innerHTML = `<span class="bt bt-advice">advice</span><pre>${escapeHtml(c.text || "")}</pre>`;
     } else if (c.type === "advisor_redacted_result") {
-      wrap.innerHTML = `<span class="bt bt-advice">advice · redacted</span><pre class="muted">encrypted_content (${(c.encrypted_content || "").length} chars)</pre>`;
+      const len = (c.encrypted_content || "").length;
+      wrap.innerHTML = `
+        <span class="bt bt-advice">advice · redacted</span>
+        <pre class="muted">Advisor response is encrypted — content not visible to the client. The executor still received the plaintext advice server-side.
+encrypted_content: ${len} chars</pre>`;
     } else if (c.type === "advisor_tool_result_error") {
-      wrap.innerHTML = `<span class="bt bt-error">advisor error</span><pre>error_code: ${escapeHtml(c.error_code)}</pre>`;
+      const code = c.error_code || "unknown";
+      const humanMsg = ADVISOR_ERROR_MESSAGES[code] || "Advisor failure";
+      wrap.innerHTML = `
+        <span class="bt bt-error">advisor error</span>
+        <pre><strong>${escapeHtml(humanMsg)}</strong>
+error_code: ${escapeHtml(code)}
+
+The request itself succeeded — the executor continued without further advice.</pre>`;
     } else {
       wrap.innerHTML = `<span class="bt">advisor_tool_result</span><pre>${escapeHtml(JSON.stringify(c, null, 2))}</pre>`;
     }
@@ -838,9 +861,11 @@ function computeTotals(steps, run) {
 function renderTurnSummary(totals, maxUses) {
   const wrap = document.createElement("div");
   wrap.className = "turn-summary";
+  // When showing a ratio, always use plural "calls" — "2 / 1 advisor call"
+  // reads awkward. Only use the count-based singular when no ratio is shown.
   const advisorPill =
     Number.isInteger(maxUses) && maxUses > 0
-      ? `${totals.advisorCalls} / ${maxUses} advisor call${maxUses === 1 ? "" : "s"}`
+      ? `${totals.advisorCalls} / ${maxUses} advisor calls`
       : `${totals.advisorCalls} advisor call${totals.advisorCalls === 1 ? "" : "s"}`;
   wrap.innerHTML = `
     <div class="summary-row">

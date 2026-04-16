@@ -14,6 +14,7 @@ This document lists features and enhancements derived from the plan. It is a liv
 | #  | Feature             | Description                               | Source |
 |----|---------------------|-------------------------------------------|--------|
 | F33 | Code View | Add a new button at the top nav with a code icon `</>` that opens a popup with 2 tabs (TypeScript default, Python) showing the actual code call a user can put in their code. Includes everything needed with placeholder API token. | User |
+| F34 | Prism JSON Syntax Highlighting | Update the "View full I/O (request + response)" viewer to use Prism for proper color coding of the JSON content. | User |
 
 ## v1.0.0 — Initial Release - 🟢 Completed
 Core playground with chat, tracing, compare modes, evaluation, and full I/O viewer.

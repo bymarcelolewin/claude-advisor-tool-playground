@@ -73,12 +73,12 @@ Handle `advisor_tool_result_error` and `advisor_redacted_result` content types i
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 5.1 | Detect advisor error content | In `public/app.js` trace rendering, check for `advisor_tool_result_error` content type on advisor tool results. | None | 🔴 Not Started | AGENT |
-| 5.2 | Map error codes to messages | Add error code → human-readable message mapping (6 codes: max_uses_exceeded, too_many_requests, overloaded, prompt_too_long, execution_time_exceeded, unavailable). | 5.1 | 🔴 Not Started | AGENT |
-| 5.3 | Style advisor error step cards | Add red-tinted styling in `public/styles.css` for error step cards. Show error code badge + human-readable description. | 5.2 | 🔴 Not Started | AGENT |
-| 5.4 | Handle advisor_redacted_result | In `public/app.js`, when content.type is `advisor_redacted_result`, render a muted notice: "Advisor response is encrypted — content not visible to client". | None | 🔴 Not Started | AGENT |
-| 5.5 | Test phase 5 | USER tests: error codes display correctly (can simulate via max_uses=1 + multi-call prompt). Redacted handling is future-proofed (no current way to trigger). | 5.1-5.4 | 🔴 Not Started | USER |
-| 5.6 | Commit phase 5 | USER commits phase 5 to git. | 5.5 | 🔴 Not Started | USER |
+| 5.1 | Detect advisor error content | Already existed via `hasAdvisorError()` and content-type checks in `blockPreview()`. Verified in place. | None | 🟢 Completed | AGENT |
+| 5.2 | Map error codes to messages | Added `ADVISOR_ERROR_MESSAGES` map in `public/app.js` with all 6 Anthropic error codes (max_uses_exceeded, too_many_requests, overloaded, prompt_too_long, execution_time_exceeded, unavailable). | 5.1 | 🟢 Completed | AGENT |
+| 5.3 | Style advisor error step cards | Red-tinted step styling already exists via `.step-error` CSS class. Block preview now shows bold human-readable message above the error code, plus a clarifying note that the request still succeeded. | 5.2 | 🟢 Completed | AGENT |
+| 5.4 | Handle advisor_redacted_result | Updated redacted result rendering to show: "Advisor response is encrypted — content not visible to the client. The executor still received the plaintext advice server-side." Includes the encrypted_content length. | None | 🟢 Completed | AGENT |
+| 5.5 | Test phase 5 | USER tested: `max_uses_exceeded` error displays correctly with red styling, bold human-readable message, error code, and clarifying note. Fixed minor grammar in the turn summary pill ("2 / 1 advisor call" → "2 / 1 advisor calls"). Redacted handling is future-proofed. | 5.1-5.4 | 🟢 Completed | USER |
+| 5.6 | Commit phase 5 | USER commits phase 5 to git. | 5.5 | 🟢 Completed | USER |
 
 ## Phase 6: System Prompt Presets
 
