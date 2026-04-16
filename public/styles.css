@@ -48,24 +48,12 @@ body {
 header {
   padding: 12px 18px;
   border-bottom: 1px solid #2d3556;
-  display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
   background: linear-gradient(180deg, #1b2035 0%, #141826 100%);
   box-shadow: 0 1px 0 rgba(122, 162, 255, 0.08), 0 2px 10px rgba(0, 0, 0, 0.3);
-}
-
-header h1 {
-  justify-self: start;
-}
-
-.header-actions {
-  justify-self: center;
-}
-
-.header-settings {
-  justify-self: end;
 }
 
 header h1 {
@@ -100,29 +88,66 @@ header h1 .title-icon {
   opacity: 0.7;
 }
 
-.header-actions {
+/* Config panel on the chat side (above chat header) */
+.config-header {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel);
   display: flex;
-  gap: 10px;
   align-items: center;
+  min-height: 52px;
+  box-sizing: border-box;
 }
 
-
-.header-select {
+.config-title {
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+}
+
+.config-panel {
+  padding: 10px 16px 12px;
+  border-bottom: 1px solid var(--border);
+  background: #262b37;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.config-label {
   font-size: 11px;
   color: var(--muted);
   text-transform: uppercase;
   letter-spacing: 0.3px;
+  min-width: 72px;
+  flex-shrink: 0;
 }
 
-.header-select select {
+.config-select {
   font-family: var(--mono);
   font-size: 12px;
   padding: 4px 8px;
   text-transform: none;
   letter-spacing: 0;
+  flex: 1;
+  min-width: 0;
+}
+
+.config-row.locked {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.config-row.locked .config-select {
+  cursor: not-allowed;
 }
 
 .btn-icon {
@@ -802,15 +827,6 @@ main {
 .totals-legend-item.branch-advisor  { color: var(--advisor); }
 .totals-legend-item.branch-exec-solo { color: var(--exec-solo); }
 .totals-legend-item.branch-adv-solo  { color: var(--adv-solo); }
-
-/* Locked mode selector visual state */
-.header-select.locked {
-  opacity: 0.7;
-  cursor: not-allowed;
-}
-.header-select.locked select {
-  cursor: not-allowed;
-}
 
 /* Turn container */
 .turn {

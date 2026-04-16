@@ -16,31 +16,6 @@
         <span>Claude Advisor Tool Playground</span>
         <span class="header-version" id="header-version"></span>
       </h1>
-      <div class="header-actions">
-        <label class="header-select">
-          Executor
-          <select id="executor">
-            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
-            <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
-            <option value="claude-opus-4-6">claude-opus-4-6</option>
-          </select>
-        </label>
-        <label class="header-select">
-          Advisor
-          <select id="advisor">
-            <option value="claude-opus-4-6" selected>claude-opus-4-6</option>
-          </select>
-        </label>
-        <label class="header-select" title="Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.">
-          Mode
-          <select id="mode">
-            <option value="advisor" selected>Advisor only</option>
-            <option value="advisor_exec">Advisor vs executor-model-solo</option>
-            <option value="advisor_adv">Advisor vs advisor-model-solo</option>
-            <option value="all">All three (3× cost)</option>
-          </select>
-        </label>
-      </div>
       <div class="header-settings">
         <button id="toggle-about" class="btn-icon" title="About" aria-label="About">ⓘ</button>
         <button id="toggle-settings" class="btn-icon" title="Settings" aria-label="Settings">⚙</button>
@@ -218,6 +193,41 @@
 
     <main>
       <section id="chat-pane">
+        <div class="config-header">
+          <span class="config-title">
+            <svg class="pane-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+              <polyline points="2 17 12 22 22 17"></polyline>
+              <polyline points="2 12 12 17 22 12"></polyline>
+            </svg>
+            <span>Config Models</span>
+          </span>
+        </div>
+        <div class="config-panel">
+          <div class="config-row">
+            <label class="config-label">EXECUTOR</label>
+            <select id="executor" class="config-select">
+              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+              <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
+              <option value="claude-opus-4-6">claude-opus-4-6</option>
+            </select>
+          </div>
+          <div class="config-row">
+            <label class="config-label">ADVISOR</label>
+            <select id="advisor" class="config-select">
+              <option value="claude-opus-4-6" selected>claude-opus-4-6</option>
+            </select>
+          </div>
+          <div class="config-row" title="Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.">
+            <label class="config-label">MODE</label>
+            <select id="mode" class="config-select">
+              <option value="advisor" selected>Advisor only</option>
+              <option value="advisor_exec">Advisor vs executor-model-solo</option>
+              <option value="advisor_adv">Advisor vs advisor-model-solo</option>
+              <option value="all">All three (3× cost)</option>
+            </select>
+          </div>
+        </div>
         <div class="chat-header">
           <span class="chat-title">
             <svg class="pane-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -273,7 +283,7 @@
           <h2 class="about-title">Claude Advisor Tool Playground <span class="about-version" id="about-version"></span></h2>
           <p class="about-line">Created by <a href="https://www.ibuildwith.ai" target="_blank" rel="noopener">iBuildWith.ai</a></p>
           <p class="about-line">Want to run it locally? Get it on <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground" target="_blank" rel="noopener">GitHub</a></p>
-          <p class="about-line">Check out the <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground/blob/main/CHANGELOG.md" target="_blank" rel="noopener">changelog</a></p>
+          <p class="about-line">Check out the <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground/blob/main/release-notes.md" target="_blank" rel="noopener">release notes</a></p>
           <p class="about-line">Contact <a href="mailto:marcelo@ibuildwith.ai">Marcelo Lewin</a></p>
         </div>
         <div class="about-footer">

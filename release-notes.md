@@ -2,6 +2,8 @@
 
 This document lists new features, bug fixes and other changes implemented during a particular build (version or patch).
 
+For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
+
 - [v1.3.0 — Conversation Totals Dashboard (2026-04-13)](#v130--conversation-totals-dashboard---2026-04-13)
 - [v1.2.1 — UI Polish & Railway Deployment (Patch) (2026-04-11)](#v121--ui-polish--railway-deployment-patch---2026-04-11)
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)

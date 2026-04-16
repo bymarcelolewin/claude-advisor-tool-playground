@@ -279,6 +279,12 @@ See [release-notes.md](release-notes.md) for the full release history, including
 
 ---
 
+## Advisor Tool API Reference
+
+For a comprehensive tracker of Anthropic's advisor tool API — including every parameter, response variant, error code, caching detail, suggested system prompts, and features not yet implemented in this app — see [docs/reference/claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
+
+---
+
 ## Support this project
 
 If this playground helped you understand the advisor tool, make a decision about whether to adopt it, or just saved you an afternoon of plumbing — please ⭐ [star the repo](https://github.com/bymarcelolewin/claude-advisor-tool-playground). It's the cheapest way to let me know it was worth building.

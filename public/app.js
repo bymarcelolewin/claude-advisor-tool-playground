@@ -385,7 +385,7 @@ function updateTraceColumnCount() {
   traceEl.dataset.cols = String(n);
 }
 
-const modeLabelEl = modeEl.closest("label");
+const modeRowEl = modeEl.closest(".config-row");
 const MODE_TITLE_DEFAULT =
   "Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.";
 const MODE_TITLE_LOCKED =
@@ -393,9 +393,9 @@ const MODE_TITLE_LOCKED =
 
 function setModeLocked(locked) {
   modeEl.disabled = locked;
-  if (modeLabelEl) {
-    modeLabelEl.title = locked ? MODE_TITLE_LOCKED : MODE_TITLE_DEFAULT;
-    modeLabelEl.classList.toggle("locked", locked);
+  if (modeRowEl) {
+    modeRowEl.title = locked ? MODE_TITLE_LOCKED : MODE_TITLE_DEFAULT;
+    modeRowEl.classList.toggle("locked", locked);
   }
 }
 
