@@ -159,6 +159,7 @@ app.post("/api/chat", async (req, res) => {
       systemPrompt,
       maxTokens,
       advisorCaching,
+      effort,
       apiKey,
       mode,
     } = req.body || {};
@@ -180,6 +181,17 @@ app.post("/api/chat", async (req, res) => {
       branchMessages[branch] = [...(histories?.[branch] || []), { role: "user", content: userMessage }];
     }
 
+    // Effort is applied to all branches equally so compare-mode remains fair.
+    // Sent even when the value is "high" (the API default) — "high" and
+    // omitting the field produce identical behavior, but including it keeps
+    // the trace transparent about what the user selected.
+    const withEffort = (params) => {
+      if (effort) {
+        params.output_config = { effort };
+      }
+      return params;
+    };
+
     const buildAdvisorParams = () => {
       const advisorTool = {
         type: "advisor_20260301",
@@ -196,7 +208,7 @@ app.post("/api/chat", async (req, res) => {
         messages: branchMessages.advisor,
       };
       if (systemPrompt && systemPrompt.trim()) params.system = systemPrompt;
-      return params;
+      return withEffort(params);
     };
 
     const buildExecutorSoloParams = () => {
@@ -206,7 +218,7 @@ app.post("/api/chat", async (req, res) => {
         messages: branchMessages.executorSolo,
       };
       if (baselinePrompt) params.system = baselinePrompt;
-      return params;
+      return withEffort(params);
     };
 
     const buildAdvisorSoloParams = () => {
@@ -216,7 +228,7 @@ app.post("/api/chat", async (req, res) => {
         messages: branchMessages.advisorSolo,
       };
       if (baselinePrompt) params.system = baselinePrompt;
-      return params;
+      return withEffort(params);
     };
 
     const callOne = async (branch) => {
@@ -246,6 +258,7 @@ app.post("/api/chat", async (req, res) => {
           system: params.system || null,
           tools: params.tools || null,
           messages: params.messages,
+          output_config: params.output_config || null,
           beta: betaHeader,
         };
         return {
@@ -266,6 +279,7 @@ app.post("/api/chat", async (req, res) => {
               system: params.system || null,
               tools: params.tools || null,
               messages: params.messages,
+              output_config: params.output_config || null,
               beta: betaHeader,
             }
           : null;

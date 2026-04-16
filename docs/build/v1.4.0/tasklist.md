@@ -19,7 +19,7 @@ Move the model selectors out of the header and into a dedicated config panel on 
 | 1.4 | Wire up JS for moved dropdowns | Update `public/app.js` so existing dropdown event handlers and state management work with the relocated dropdowns. Changed `modeLabelEl` from `.closest("label")` to `modeRowEl` using `.closest(".config-row")` for mode locking class. | 1.2 | 🟢 Completed | AGENT |
 | 1.5 | Update header grid | Simplify the main header CSS grid in `public/styles.css` from 3-column grid to flex space-between (title left + icons right). Removed obsolete `.header-select` and `.header-actions` classes. | 1.1 | 🟢 Completed | AGENT |
 | 1.6 | Test phase 1 | USER tests: dropdowns still work, mode locking still works after first message, styling looks right. | 1.1-1.5 | 🟢 Completed | USER |
-| 1.7 | Commit phase 1 | USER commits phase 1 to git. | 1.6 | 🟡 In Progress | USER |
+| 1.7 | Commit phase 1 | USER commits phase 1 to git. | 1.6 | 🟢 Completed | USER |
 
 ## Phase 2: Effort Settings
 
@@ -27,14 +27,16 @@ Add the effort dropdown on the executor row and wire it through to the API.
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 2.1 | Add effort dropdown markup | Add `<select>` element next to executor model dropdown in `public/index.html` with options: High (default), Max, Medium, Low. Include label "EFFORT". | 1.2 | 🔴 Not Started | AGENT |
-| 2.2 | Add effort settings state | Add `effort` to settings state in `public/app.js`. Default to `"high"`. Persist to localStorage. | 2.1 | 🔴 Not Started | AGENT |
-| 2.3 | Disable effort for Haiku | Listen for executor model changes in `public/app.js`. When executor is `claude-haiku-4-5`, disable the effort dropdown and add a tooltip: "Effort not supported for Haiku 4.5". Re-enable on other executor selections. | 2.2 | 🔴 Not Started | AGENT |
-| 2.4 | Send effort to server | Update request payload in `public/app.js` to include the `effort` value when calling `/api/chat`. | 2.2 | 🔴 Not Started | AGENT |
-| 2.5 | Apply effort to all branches on server | In `server.js`, accept `effort` from request body. Add `output_config: { effort }` to all branch request params (advisor, executorSolo, advisorSolo) when effort is not `"high"`. Omit `output_config` when effort is `"high"`. | 2.4 | 🔴 Not Started | AGENT |
-| 2.6 | Style effort dropdown | Style the effort dropdown in `public/styles.css` to match the executor dropdown, placed on the same row. | 2.1 | 🔴 Not Started | AGENT |
-| 2.7 | Test phase 2 | USER tests: effort applies to all branches in compare mode, Haiku disables effort correctly, all 4 effort levels produce different token counts. | 2.1-2.6 | 🔴 Not Started | USER |
-| 2.8 | Commit phase 2 | USER commits phase 2 to git. | 2.7 | 🔴 Not Started | USER |
+| 2.1 | Add effort dropdown markup | Added `<select id="effort">` on the same row as executor in `public/index.html` with options Low/Medium/High (default)/Max. Inline `EFFORT` label. | 1.2 | 🟢 Completed | AGENT |
+| 2.2 | Add effort settings state | Added `effort` to `saveSettings`/`applySettings` in `public/app.js`. Default "high". Persists to localStorage. Added to auto-save listeners. | 2.1 | 🟢 Completed | AGENT |
+| 2.3 | Disable effort for Haiku | `updateEffortAvailability()` in `public/app.js` disables the effort dropdown when executor starts with `claude-haiku`. Sets tooltip "Effort not supported for Haiku 4.5". Called on executor change and on load. | 2.2 | 🟢 Completed | AGENT |
+| 2.4 | Send effort to server | Request payload includes `effort: effortEl.disabled ? null : effortEl.value`. | 2.2 | 🟢 Completed | AGENT |
+| 2.5 | Apply effort to all branches on server | Added `withEffort(params)` helper in `server.js` that adds `output_config: { effort }` when effort is set and not "high". Applied to all three `buildXxxParams` functions. Also added `output_config` to the safe request copy for the Full I/O viewer. | 2.4 | 🟢 Completed | AGENT |
+| 2.6 | Style effort dropdown | Added `.config-label-inline`, `.config-select-narrow`, and `.config-select:disabled` styles in `public/styles.css`. Effort dropdown sits flush after executor on the same row. | 2.1 | 🟢 Completed | AGENT |
+| 2.7 | Lock effort after first turn | Added `setEffortLocked()` paralleling `setModeLocked()`. Coordinates with Haiku-disable logic via `effortLocked` state + refactored `updateEffortAvailability()`. Lock triggers on first send, unlocks on new conversation or first-send failure. | 2.1-2.6 | 🟢 Completed | AGENT |
+| 2.8 | Show effort in dashboard | Added effort indicator to totals-legend (`Effort: <value>` or `n/a (Haiku)`). Styled with `.totals-legend-meta`. | 2.7 | 🟢 Completed | AGENT |
+| 2.9 | Test phase 2 | USER tests: effort applies to all branches in compare mode, Haiku disables effort correctly, effort locks after first turn, dashboard shows effort correctly, all 4 effort levels produce different token counts. Also tested: executor + advisor locking, "n/a" display in effort dropdown for Haiku, yellow-styled effort legend item, "New Chat" button styling. | 2.1-2.8 | 🟢 Completed | USER |
+| 2.10 | Commit phase 2 | USER commits phase 2 to git. | 2.9 | 🟢 Completed | USER |
 
 ## Phase 3: max_uses Setting & Advisor Call Counter
 
@@ -97,11 +99,14 @@ Bump version numbers, update release notes, write retrospective, final test.
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
 | 7.1 | Bump package.json version | Update `package.json` version from "1.3.0" to "1.4.0". | All prior phases | 🔴 Not Started | AGENT |
-| 7.2 | Update README version badge | Update version badge in `README.md` to v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
-| 7.3 | Add release notes entry | Add v1.4.0 entry to `release-notes.md` at the project root with all changes. Update the TOC. | 7.1 | 🔴 Not Started | AGENT |
-| 7.4 | Update cody.json | Update `cody.json` in project root: set `version` to "1.4.0" and `updatedAt` to today's date. | 7.1 | 🔴 Not Started | AGENT |
-| 7.5 | Update feature backlog | Mark v1.4.0 status as 🟢 Completed in `docs/build/feature-backlog.md`. Mark all v1.4.0 features as 🟢 Completed. | 7.1 | 🔴 Not Started | AGENT |
-| 7.6 | Update welcome slideshow | In `public/index.html`, update Slide 3 step 1 to reference the new config panel location instead of "at the top" (where the dropdowns used to be in the header). Review all other welcome content for accuracy against v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
-| 7.7 | Write retrospective | Create `docs/build/v1.4.0/retrospective.md` from the template. Fill in what went well, what could have gone better, lessons learned, action items. | 7.1 | 🔴 Not Started | AGENT |
-| 7.8 | End-to-end test | USER performs full end-to-end test: all features work together, no regressions in existing functionality. | 7.1-7.7 | 🔴 Not Started | USER |
-| 7.9 | Final commit | USER commits version bump + release notes + retrospective + welcome update to git. | 7.8 | 🔴 Not Started | USER |
+| 7.2 | Add lastUpdated field to package.json | Add a `"lastUpdated": "YYYY-MM-DD"` field to `package.json` with today's date. This field will be the source of truth for "last updated" across the app. | 7.1 | 🔴 Not Started | AGENT |
+| 7.3 | Expose lastUpdated from server | Update `/api/version` endpoint in `server.js` to also return `lastUpdated` from package.json alongside the version. | 7.2 | 🔴 Not Started | AGENT |
+| 7.4 | Add tagline + last updated to About modal | In `public/index.html` About modal, add below the title: "A Playground for the [Claude Advisor Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool)" (with the link opening in a new tab). Also add a "Last updated: YYYY-MM-DD" line that reads the value from `/api/version`. Update `public/app.js` to fetch and populate the lastUpdated field. | 7.3 | 🔴 Not Started | AGENT |
+| 7.5 | Update README version badge | Update version badge in `README.md` to v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
+| 7.6 | Add release notes entry | Add v1.4.0 entry to `release-notes.md` at the project root with all changes. Update the TOC. | 7.1 | 🔴 Not Started | AGENT |
+| 7.7 | Update cody.json | Update `cody.json` in project root: set `version` to "1.4.0" and `updatedAt` to today's date. | 7.1 | 🔴 Not Started | AGENT |
+| 7.8 | Update feature backlog | Mark v1.4.0 status as 🟢 Completed in `docs/build/feature-backlog.md`. Mark all v1.4.0 features as 🟢 Completed. | 7.1 | 🔴 Not Started | AGENT |
+| 7.9 | Update welcome slideshow | In `public/index.html`, update Slide 3 step 1 to reference the new config panel location instead of "at the top" (where the dropdowns used to be in the header). Review all other welcome content for accuracy against v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
+| 7.10 | Write retrospective | Create `docs/build/v1.4.0/retrospective.md` from the template. Fill in what went well, what could have gone better, lessons learned, action items. | 7.1 | 🔴 Not Started | AGENT |
+| 7.11 | End-to-end test | USER performs full end-to-end test: all features work together, no regressions in existing functionality. About box shows correct version, last updated date, and tagline with working link. | 7.1-7.10 | 🔴 Not Started | USER |
+| 7.12 | Final commit | USER commits version bump + release notes + retrospective + welcome update + About modal changes to git. | 7.11 | 🔴 Not Started | USER |

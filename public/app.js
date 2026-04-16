@@ -214,6 +214,7 @@ const advisorEl = $("#advisor");
 const modeEl = $("#mode");
 const maxTokensEl = $("#max-tokens");
 const advisorCachingEl = $("#advisor-caching");
+const effortEl = $("#effort");
 const apiKeyEl = $("#api-key");
 const settingsPanelEl = $("#settings-panel");
 const toggleSettingsBtn = $("#toggle-settings");
@@ -268,6 +269,9 @@ function loadSettings() {
 }
 
 function saveSettings() {
+  // "na" is a display state (shown when Haiku is selected). Persist the user's
+  // real selection instead so switching to Sonnet/Opus restores the right value.
+  const effortToSave = effortEl.value === "na" ? savedEffortValue : effortEl.value;
   const data = {
     apiKey: apiKeyEl.value,
     executor: executorEl.value,
@@ -275,6 +279,7 @@ function saveSettings() {
     mode: modeEl.value,
     maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
     advisorCaching: advisorCachingEl.checked,
+    effort: effortToSave,
     systemPrompt: systemEl.value,
     evalProvider: evalProviderEl.value,
     openaiKey: openaiKeyEl.value,
@@ -290,6 +295,7 @@ function applySettings(s) {
   if (s.mode) modeEl.value = s.mode;
   if (s.maxTokens) maxTokensEl.value = s.maxTokens;
   if (typeof s.advisorCaching === "boolean") advisorCachingEl.checked = s.advisorCaching;
+  if (s.effort) effortEl.value = s.effort;
   systemEl.value = s.systemPrompt || SUGGESTED_SYSTEM_PROMPT;
   if (s.evalProvider) evalProviderEl.value = s.evalProvider;
   if (s.openaiKey != null) openaiKeyEl.value = s.openaiKey;
@@ -355,6 +361,7 @@ function flashSavedIndicator() {
   modeEl,
   maxTokensEl,
   advisorCachingEl,
+  effortEl,
   systemEl,
   evalProviderEl,
   openaiKeyEl,
@@ -367,6 +374,67 @@ function flashSavedIndicator() {
     flashSavedIndicator();
   });
 });
+
+// Effort availability coordinates two independent conditions:
+// 1. Haiku 4.5 doesn't support effort — dropdown disabled + shows "n/a" when
+//    Haiku is executor. The user's real effort selection is preserved and
+//    restored when they switch back to Sonnet/Opus.
+// 2. Effort is locked after the first successful turn — same reasoning as mode
+//    locking (switching mid-conversation would make turn comparisons unfair).
+const EFFORT_TITLE_DEFAULT = effortEl.title;
+const EFFORT_TITLE_HAIKU = "Effort not supported for Haiku 4.5";
+const EFFORT_TITLE_LOCKED =
+  "Effort is locked once a conversation starts. Click ＋ to start a new chat and change effort.";
+const effortRowEl = effortEl.closest(".config-row");
+let effortLocked = false;
+// Track the user's real effort selection separately from what the dropdown
+// displays, so the "n/a" state doesn't clobber their preference.
+let savedEffortValue = effortEl.value;
+
+function ensureNaOption() {
+  if (!effortEl.querySelector('option[value="na"]')) {
+    const naOption = document.createElement("option");
+    naOption.value = "na";
+    naOption.textContent = "n/a";
+    effortEl.insertBefore(naOption, effortEl.firstChild);
+  }
+}
+
+function removeNaOption() {
+  const naOption = effortEl.querySelector('option[value="na"]');
+  if (naOption) naOption.remove();
+}
+
+function updateEffortAvailability() {
+  const isHaiku = executorEl.value.startsWith("claude-haiku");
+
+  if (isHaiku) {
+    // Capture the real selection before swapping to "n/a", but only if the
+    // dropdown isn't already showing "n/a" (avoid overwriting on repeat calls).
+    if (effortEl.value !== "na") savedEffortValue = effortEl.value;
+    ensureNaOption();
+    effortEl.value = "na";
+  } else {
+    removeNaOption();
+    if (effortEl.value === "na" || !effortEl.value) {
+      effortEl.value = savedEffortValue || "high";
+    }
+  }
+
+  effortEl.disabled = isHaiku || effortLocked;
+  let title = EFFORT_TITLE_DEFAULT;
+  if (effortLocked) title = EFFORT_TITLE_LOCKED;
+  else if (isHaiku) title = EFFORT_TITLE_HAIKU;
+  effortEl.title = title;
+}
+
+function setEffortLocked(locked) {
+  effortLocked = locked;
+  updateEffortAvailability();
+}
+
+executorEl.addEventListener("change", updateEffortAvailability);
+updateEffortAvailability();
 
 // When the provider changes, toggle the OpenAI key field visibility
 evalProviderEl.addEventListener("change", updateOpenAIKeyVisibility);
@@ -396,6 +464,33 @@ function setModeLocked(locked) {
   if (modeRowEl) {
     modeRowEl.title = locked ? MODE_TITLE_LOCKED : MODE_TITLE_DEFAULT;
     modeRowEl.classList.toggle("locked", locked);
+  }
+}
+
+// Executor model is locked after the first successful turn — switching mid-
+// conversation would make the branches mismatch what produced their history.
+const executorRowEl = executorEl.closest(".config-row");
+const EXECUTOR_TITLE_LOCKED =
+  "Executor is locked once a conversation starts. Click ＋ to start a new chat and change executors.";
+function setExecutorLocked(locked) {
+  executorEl.disabled = locked;
+  if (executorRowEl) {
+    executorRowEl.title = locked ? EXECUTOR_TITLE_LOCKED : "";
+    executorRowEl.classList.toggle("locked", locked);
+  }
+}
+
+// Advisor model is locked after the first successful turn — same reasoning as
+// the executor. Currently only one advisor option exists, but locking keeps
+// the UI consistent and future-proofs for when additional advisor models ship.
+const advisorRowEl = advisorEl.closest(".config-row");
+const ADVISOR_TITLE_LOCKED =
+  "Advisor is locked once a conversation starts. Click ＋ to start a new chat and change advisors.";
+function setAdvisorLocked(locked) {
+  advisorEl.disabled = locked;
+  if (advisorRowEl) {
+    advisorRowEl.title = locked ? ADVISOR_TITLE_LOCKED : "";
+    advisorRowEl.classList.toggle("locked", locked);
   }
 }
 
@@ -816,10 +911,23 @@ function renderDashboard() {
     )
     .join("");
 
+  // Effort is locked after the first turn, so it's consistent across the whole
+  // conversation. Haiku 4.5 doesn't support effort → show "n/a (<model>)"
+  // instead of a value that wasn't actually sent. Styled to match the branch
+  // legend items (dot + label + value) with its own accent color on the label.
+  const isHaiku = executorEl.value.startsWith("claude-haiku");
+  const effortLabel = isHaiku
+    ? `n/a (${shortModel(executorEl.value)})`
+    : effortEl.value;
+  const effortHtml = `<span class="totals-legend-item legend-effort">
+    <span class="totals-legend-dot"></span>EFFORT
+    <span class="totals-legend-model">${escapeHtml(effortLabel)}</span>
+  </span>`;
+
   traceTotalsEl.hidden = false;
   traceTotalsEl.innerHTML = `
     <div class="totals-grid">${tileHtml}${turnsTile}</div>
-    <div class="totals-legend">${legendHtml}</div>
+    <div class="totals-legend">${legendHtml}${effortHtml}</div>
   `;
 }
 
@@ -967,12 +1075,17 @@ const turnState = new Map();
 async function send(userText) {
   sendBtn.disabled = true;
 
-  // Lock the mode selector the moment the user hits send — gives immediate
-  // visual feedback that the conversation has started. If the send ends up
-  // failing before any turn is recorded, the finally block unlocks it again
-  // so the user can switch modes and retry.
+  // Lock all config selectors the moment the user hits send — gives immediate
+  // visual feedback that the conversation has started. If the send fails
+  // before any turn is recorded, the finally block unlocks them again so the
+  // user can retry with different settings.
   const wasFirstTurn = conversationTurnCount === 0;
-  if (wasFirstTurn) setModeLocked(true);
+  if (wasFirstTurn) {
+    setModeLocked(true);
+    setEffortLocked(true);
+    setExecutorLocked(true);
+    setAdvisorLocked(true);
+  }
 
   // Bump turn counter at the start so chat and trace share the same number.
   turnCounter += 1;
@@ -1003,6 +1116,7 @@ async function send(userText) {
         systemPrompt: systemEl.value,
         maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
         advisorCaching: advisorCachingEl.checked,
+        effort: executorEl.value.startsWith("claude-haiku") ? null : effortEl.value,
         apiKey: apiKeyEl.value || undefined,
         mode,
       }),
@@ -1170,9 +1284,12 @@ async function send(userText) {
     sendBtn.disabled = false;
     // If this was supposed to be the first turn but nothing got recorded
     // (network error, non-OK response, or every branch errored), release the
-    // mode lock so the user can change modes and retry.
+    // locks so the user can retry with different settings.
     if (wasFirstTurn && conversationTurnCount === 0) {
       setModeLocked(false);
+      setEffortLocked(false);
+      setExecutorLocked(false);
+      setAdvisorLocked(false);
     }
     inputEl.focus();
   }
@@ -1527,6 +1644,9 @@ resetBtn.addEventListener("click", async () => {
   turnCounter = 0;
   renderDashboard();
   setModeLocked(false);
+  setEffortLocked(false);
+  setExecutorLocked(false);
+  setAdvisorLocked(false);
   inputEl.focus();
 });
 

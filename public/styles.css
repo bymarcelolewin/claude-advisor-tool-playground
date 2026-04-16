@@ -131,6 +131,11 @@ header h1 .title-icon {
   flex-shrink: 0;
 }
 
+.config-label-inline {
+  min-width: 0;
+  margin-left: 6px;
+}
+
 .config-select {
   font-family: var(--mono);
   font-size: 12px;
@@ -139,6 +144,16 @@ header h1 .title-icon {
   letter-spacing: 0;
   flex: 1;
   min-width: 0;
+}
+
+.config-select-narrow {
+  flex: 0 0 auto;
+  min-width: 90px;
+}
+
+.config-select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .config-row.locked {
@@ -170,6 +185,38 @@ header h1 .title-icon {
   color: var(--text);
   background: var(--panel-3);
   border-color: var(--panel-3);
+}
+
+/* New Chat button in the chat header — stands out more than a plain icon
+   button since starting a fresh conversation is a primary user action. */
+.btn-new-chat {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px 5px 10px;
+  background: rgba(184, 107, 255, 0.12);
+  border: 1px solid rgba(184, 107, 255, 0.35);
+  color: var(--advisor);
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.15s, border-color 0.15s;
+}
+
+.btn-new-chat:hover {
+  background: rgba(184, 107, 255, 0.22);
+  border-color: rgba(184, 107, 255, 0.55);
+}
+
+.btn-new-chat-plus {
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 600;
+}
+
+.btn-new-chat-label {
+  letter-spacing: 0.2px;
 }
 
 /* The settings gear is alone in its own section — make it a bit larger
@@ -827,6 +874,13 @@ main {
 .totals-legend-item.branch-advisor  { color: var(--advisor); }
 .totals-legend-item.branch-exec-solo { color: var(--exec-solo); }
 .totals-legend-item.branch-adv-solo  { color: var(--adv-solo); }
+
+/* Effort indicator in the legend — styled to match branch items but with its
+   own accent color since effort is a global setting, not a branch. Only the
+   label + dot take the accent color; the value inherits the muted style used
+   by branch model names for visual consistency. */
+.totals-legend-item.legend-effort { color: #ffd94a; margin-left: auto; }
+.totals-legend-item.legend-effort .totals-legend-dot { background: #ffd94a; }
 
 /* Turn container */
 .turn {
