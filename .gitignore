@@ -67,6 +67,7 @@ desktop.ini
 # =============================================================================
 dist/
 build/
+!docs/build
 out/
 coverage/
 .nyc_output/
@@ -79,5 +80,5 @@ temp/
 SCRATCH.md
 NOTES.md
 TODO.local.md
-previous-chat.md
 api.keys
+settings.local.json

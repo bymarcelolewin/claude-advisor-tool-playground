@@ -273,9 +273,9 @@ When you want to understand exactly why one branch's numbers differ from another
 
 ---
 
-## Changelog
+## Release Notes
 
-See [CHANGELOG.md](CHANGELOG.md) for the full release history, including the new **Conversation Totals Dashboard** shipped in v1.3.0.
+See [release-notes.md](release-notes.md) for the full release history, including the new **Conversation Totals Dashboard** shipped in v1.3.0.
 
 ---
 
