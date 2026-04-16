@@ -279,7 +279,7 @@ function saveSettings() {
     advisor: advisorEl.value,
     mode: modeEl.value,
     maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
-    advisorCaching: advisorCachingEl.checked,
+    advisorCaching: advisorCachingEl.value,
     maxUses: parseMaxUses(maxUsesEl.value),
     effort: effortToSave,
     systemPrompt: systemEl.value,
@@ -305,7 +305,7 @@ function applySettings(s) {
   if (s.advisor) advisorEl.value = s.advisor;
   if (s.mode) modeEl.value = s.mode;
   if (s.maxTokens) maxTokensEl.value = s.maxTokens;
-  if (typeof s.advisorCaching === "boolean") advisorCachingEl.checked = s.advisorCaching;
+  if (s.advisorCaching) advisorCachingEl.value = s.advisorCaching;
   if (s.maxUses != null && s.maxUses !== "") maxUsesEl.value = s.maxUses;
   if (s.effort) effortEl.value = s.effort;
   systemEl.value = s.systemPrompt || SUGGESTED_SYSTEM_PROMPT;
@@ -791,8 +791,12 @@ function renderStep(step, idx, opts = {}) {
     <div class="step-tokens">
       <span><b>in</b> ${fmtNum(iter.input_tokens)}</span>
       <span><b>out</b> ${fmtNum(iter.output_tokens)}</span>
-      <span title="cache_read_input_tokens — served from prompt cache at ~10% of input rate"><b>cache_r</b> ${fmtNum(iter.cache_read_input_tokens)}</span>
-      <span title="cache_creation_input_tokens — written into cache (~125% of input rate, one-time)"><b>cache_w</b> ${fmtNum(iter.cache_creation_input_tokens)}</span>
+      ${
+        step.role === "advisor"
+          ? `<span title="cache_read_input_tokens — served from prompt cache at ~10% of input rate"><b>cache_r</b> ${fmtNum(iter.cache_read_input_tokens)}</span>
+             <span title="cache_creation_input_tokens — written into cache (~125% of input rate, one-time)"><b>cache_w</b> ${fmtNum(iter.cache_creation_input_tokens)}</span>`
+          : ""
+      }
     </div>
   `;
 
@@ -1168,7 +1172,7 @@ async function send(userText) {
         advisorModel: advisorEl.value,
         systemPrompt: systemEl.value,
         maxTokens: parseInt(maxTokensEl.value, 10) || 8192,
-        advisorCaching: advisorCachingEl.checked,
+        advisorCaching: advisorCachingEl.value,
         maxUses: turnMaxUses,
         effort: executorEl.value.startsWith("claude-haiku") ? null : effortEl.value,
         apiKey: apiKeyEl.value || undefined,

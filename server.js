@@ -199,8 +199,10 @@ app.post("/api/chat", async (req, res) => {
         name: "advisor",
         model: advisorModel,
       };
-      if (advisorCaching) {
-        advisorTool.caching = { type: "ephemeral", ttl: "5m" };
+      // advisorCaching is "off" | "5m" | "1h". Only attach the caching object
+      // when the user selected a TTL — otherwise caching is disabled.
+      if (advisorCaching === "5m" || advisorCaching === "1h") {
+        advisorTool.caching = { type: "ephemeral", ttl: advisorCaching };
       }
       // max_uses caps advisor calls per request. Only include when the client
       // sent a positive integer; missing/null means unlimited.

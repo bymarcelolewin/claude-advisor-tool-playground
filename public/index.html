@@ -77,12 +77,13 @@
             <div class="setting">
               <label for="advisor-caching">
                 Advisor caching
-                <span class="setting-hint">Enables prompt caching for the advisor's own transcript. Breaks even at ≈3 advisor calls per conversation.</span>
+                <span class="setting-hint">Enables prompt caching for the advisor's own transcript. Breaks even at ≈3 advisor calls per conversation. Use 1h for long-running agent loops.</span>
               </label>
-              <label class="checkbox-row">
-                <input id="advisor-caching" type="checkbox" />
-                <span>Enable advisor-side caching</span>
-              </label>
+              <select id="advisor-caching">
+                <option value="off" selected>Off</option>
+                <option value="5m">5 min</option>
+                <option value="1h">1 hour</option>
+              </select>
             </div>
 
             <div class="setting">

@@ -59,12 +59,13 @@ Replace the caching checkbox with an Off / 5m / 1h dropdown.
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 4.1 | Replace caching checkbox with dropdown | In `public/index.html`, replace the "Enable advisor-side caching" checkbox with a `<select>` dropdown containing: Off (default), 5 min, 1 hour. | None | 🔴 Not Started | AGENT |
-| 4.2 | Update caching state handling | In `public/app.js`, change `advisorCaching` setting from boolean to string ("off" / "5m" / "1h"). Default to "off". | 4.1 | 🔴 Not Started | AGENT |
-| 4.3 | Send caching TTL to server | Update request payload to send the selected caching value instead of boolean. | 4.2 | 🔴 Not Started | AGENT |
-| 4.4 | Update server to use caching TTL | In `server.js`, read the caching value. If "off", omit caching from tool definition. If "5m" or "1h", include `caching: { type: "ephemeral", ttl: value }`. | 4.3 | 🔴 Not Started | AGENT |
-| 4.5 | Test phase 4 | USER tests: all three caching options work, 1h option produces expected cache hits on long-running conversations. | 4.1-4.4 | 🔴 Not Started | USER |
-| 4.6 | Commit phase 4 | USER commits phase 4 to git. | 4.5 | 🔴 Not Started | USER |
+| 4.1 | Replace caching checkbox with dropdown | Replaced the "Enable advisor-side caching" checkbox with `<select>` containing Off (default) / 5 min / 1 hour in `public/index.html`. Updated help text to mention 1h for long-running agent loops. | None | 🟢 Completed | AGENT |
+| 4.2 | Update caching state handling | Changed `advisorCaching` from boolean to string in `saveSettings`/`applySettings`. No migration needed (single-user project). | 4.1 | 🟢 Completed | AGENT |
+| 4.3 | Send caching TTL to server | Request payload now sends `advisorCaching: advisorCachingEl.value` ("off"/"5m"/"1h"). | 4.2 | 🟢 Completed | AGENT |
+| 4.4 | Update server to use caching TTL | Server's `buildAdvisorParams()` now checks for "5m" or "1h" and includes `caching: { type: "ephemeral", ttl: value }` using the selected TTL. "off" omits caching entirely. | 4.3 | 🟢 Completed | AGENT |
+| 4.5 | Hide cache_r/cache_w from executor steps | Removed `cache_r` and `cache_w` metrics from non-advisor step cards in `renderStep()`. They were always 0 on executor steps (the app doesn't set `cache_control` breakpoints on executor content) and misleading. Now only advisor step cards show them — which is where they actually vary with the caching dropdown. | 4.4 | 🟢 Completed | AGENT |
+| 4.6 | Test phase 4 | USER tested: all three caching options work, executor step cards no longer show cache_r/cache_w (only advisor steps do), Full I/O viewer shows correct `caching: { type: "ephemeral", ttl: "5m" | "1h" }` on the advisor tool. | 4.1-4.5 | 🟢 Completed | USER |
+| 4.7 | Commit phase 4 | USER commits phase 4 to git. | 4.6 | 🟢 Completed | USER |
 
 ## Phase 5: Error Codes & Redacted Result Handling
 
