@@ -19,7 +19,7 @@ Self-host Prism 1.30.0, build the dark theme, wire it into the page. Both F33 an
 | 1.4 | Wire Prism into index.html | Added `<link rel="stylesheet" href="vendor/prism/prism-theme.css" />` in `<head>` after `styles.css`. Added 6 `<script>` tags before `app.js`: core, then javascript, typescript, python, bash, json. | 1.1, 1.3 | 🟢 Completed | AGENT |
 | 1.5 | Smoke test Prism | Added a temporary banner with 4 highlighted blocks (JSON, TypeScript, Python, Bash). USER visually verified all 4 languages render correctly with the new theme. Banner removed. | 1.4 | 🟢 Completed | AGENT |
 | 1.6 | Test phase 1 | USER confirmed: all 4 languages highlighted correctly, theme colors match palette intent (purple keywords, green strings, amber numbers, blue properties/functions, muted-italic comments), no console errors. | 1.1-1.5 | 🟢 Completed | USER |
-| 1.7 | Commit phase 1 | USER commits phase 1 to git. | 1.6 | 🔴 Not Started | USER |
+| 1.7 | Commit phase 1 | USER committed phase 1 to git. | 1.6 | 🟢 Completed | USER |
 
 ## Phase 2: Shared Copy Button Helper
 
@@ -27,9 +27,9 @@ Build the reusable `makeCopyButton()` helper and `.copy-btn` styling. Used by bo
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 2.1 | Implement makeCopyButton helper | Add `makeCopyButton(getText, opts)` to `public/app.js`. Returns a `<button class="copy-btn">` with SVG icon + "Copy" label. On click, calls `getText()` (lazy), writes to clipboard via `navigator.clipboard.writeText()`, swaps to "✓ Copied" for 1400ms, reverts. On rejection, shows "Copy failed" briefly. | None | 🔴 Not Started | AGENT |
-| 2.2 | Add copy-btn CSS | Add `.copy-btn` styles to `public/styles.css`: dark panel background, border, subtle hover, `.copy-btn.copied` success state in `#7ed58a` green. Sized to fit comfortably in code-block corners. | 2.1 | 🔴 Not Started | AGENT |
-| 2.3 | Test phase 2 | USER tests via temporary smoke harness: button copies text correctly, "✓ Copied" state appears and reverts, hover styling works. | 2.1-2.2 | 🔴 Not Started | USER |
+| 2.1 | Implement makeCopyButton helper | Added `makeCopyButton(getText, opts)` to `public/app.js` (after `escapeHtml`). Returns a `<button class="copy-btn">` with shared `COPY_ICON_SVG` + "Copy" label span. Lazy `getText()` invocation, async clipboard write, "✓ Copied" success state for 1400ms with green class, "Copy failed" error state with `--danger` class. Resets cleanly even if clicked rapidly (clears prior timer). | None | 🟢 Completed | AGENT |
+| 2.2 | Add copy-btn CSS | Added `.copy-btn` styles to `public/styles.css` (after `.btn-danger`). Dark panel background, accent-blue hover, `.copy-btn.copied` in `#7ed58a` green, `.copy-btn.failed` in `var(--danger)` red, focus-visible outline for keyboard users. Sized to fit comfortably in code-block corners. | 2.1 | 🟢 Completed | AGENT |
+| 2.3 | Test phase 2 | USER confirmed via smoke harness: pasted text matched expected three-line content; "✓ Copied" state and hover both worked. Smoke harness removed from index.html and app.js. | 2.1-2.2 | 🟢 Completed | USER |
 | 2.4 | Commit phase 2 | USER commits phase 2 to git. | 2.3 | 🔴 Not Started | USER |
 
 ## Phase 3: Full I/O Viewer Upgrades (F34 + F35)

@@ -619,6 +619,50 @@ function escapeHtml(s) {
     .replace(/'/g, "&#039;");
 }
 
+const COPY_ICON_SVG =
+  '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">' +
+  '<rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>' +
+  '<path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>' +
+  '</svg>';
+
+// Reusable copy-to-clipboard button. `getText` is called lazily on each click
+// so the button always copies the currently displayed content (important when
+// the underlying text can change while the button is mounted).
+function makeCopyButton(getText, opts = {}) {
+  const label = opts.label || "Copy";
+  const ariaLabel = opts.ariaLabel || "Copy to clipboard";
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = "copy-btn";
+  btn.setAttribute("aria-label", ariaLabel);
+  btn.innerHTML = COPY_ICON_SVG + '<span class="copy-btn-label">' + escapeHtml(label) + "</span>";
+
+  let resetTimer = null;
+  const flash = (text, cls) => {
+    if (resetTimer) clearTimeout(resetTimer);
+    btn.classList.remove("copied", "failed");
+    if (cls) btn.classList.add(cls);
+    btn.querySelector(".copy-btn-label").textContent = text;
+    resetTimer = setTimeout(() => {
+      btn.classList.remove("copied", "failed");
+      btn.querySelector(".copy-btn-label").textContent = label;
+      resetTimer = null;
+    }, 1400);
+  };
+
+  btn.addEventListener("click", async () => {
+    try {
+      const text = typeof getText === "function" ? getText() : String(getText ?? "");
+      await navigator.clipboard.writeText(text);
+      flash("✓ Copied", "copied");
+    } catch (err) {
+      flash("Copy failed", "failed");
+    }
+  });
+
+  return btn;
+}
+
 function addMessage(role, text, cls = "", parent = messagesEl) {
   const div = document.createElement("div");
   div.className = `msg ${role} ${cls}`.trim();

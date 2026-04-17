@@ -2180,6 +2180,51 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   border-color: #d85757;
 }
 
+/* ===== Copy button (shared) =====
+ * Used by Code View tabs and Full I/O viewer JSON blocks.
+ * Built via makeCopyButton() in app.js.
+ */
+.copy-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: var(--panel-3);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 500;
+  font-family: inherit;
+  padding: 5px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: color 0.12s, border-color 0.12s, background 0.12s;
+}
+
+.copy-btn:hover {
+  background: var(--panel);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.copy-btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.copy-btn.copied {
+  color: #7ed58a;
+  border-color: #7ed58a;
+}
+
+.copy-btn.failed {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.copy-btn svg {
+  flex-shrink: 0;
+}
+
 /* ===== About modal ===== */
 
 .about-modal {
