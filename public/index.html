@@ -17,9 +17,26 @@
         <span>Claude Advisor Tool Playground</span>
         <span class="header-version" id="header-version"></span>
       </h1>
-      <div class="header-settings">
-        <button id="toggle-about" class="btn-icon" title="About" aria-label="About">ⓘ</button>
-        <button id="toggle-settings" class="btn-icon" title="Settings" aria-label="Settings">⚙</button>
+      <div class="topnav-cluster">
+        <button id="toggle-code-view" class="topnav-btn topnav-btn-code" title="View code for current configuration" aria-label="Code View">
+          <svg class="topnav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <polyline points="16 18 22 12 16 6"></polyline>
+            <polyline points="8 6 2 12 8 18"></polyline>
+          </svg>
+        </button>
+        <button id="toggle-about" class="topnav-btn" title="About" aria-label="About">
+          <svg class="topnav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="16" x2="12" y2="12"></line>
+            <line x1="12" y1="8" x2="12.01" y2="8"></line>
+          </svg>
+        </button>
+        <button id="toggle-settings" class="topnav-btn" title="Settings" aria-label="Settings">
+          <svg class="topnav-ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="3"></circle>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+          </svg>
+        </button>
       </div>
     </header>
 
@@ -301,6 +318,40 @@
         <div id="trace"></div>
       </section>
     </main>
+
+    <!-- Code View modal -->
+    <div id="code-view-modal" class="code-view-modal" role="dialog" aria-modal="true" aria-labelledby="code-view-title">
+      <div class="code-view-backdrop" data-code-view-close></div>
+      <div class="code-view-card">
+        <div class="code-view-header">
+          <h2 id="code-view-title">
+            <span class="code-view-icon">&lt;/&gt;</span>
+            Code View
+            <span class="code-view-subtitle">Generated from your current configuration</span>
+          </h2>
+          <button type="button" class="btn-close" data-code-view-close aria-label="Close code view">×</button>
+        </div>
+
+        <div id="code-view-pill-rail" class="code-view-pill-rail"></div>
+
+        <div class="code-view-tabs" role="tablist" aria-label="Code language">
+          <button type="button" class="code-view-tab active" role="tab" aria-selected="true" aria-controls="code-view-panel-ts" id="code-view-tab-ts" data-tab="ts">TypeScript</button>
+          <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-py" id="code-view-tab-py" data-tab="py">Python</button>
+          <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-curl" id="code-view-tab-curl" data-tab="curl">curl</button>
+        </div>
+
+        <div class="code-view-body">
+          <div class="code-view-panel active" id="code-view-panel-ts" role="tabpanel" aria-labelledby="code-view-tab-ts" data-panel="ts"></div>
+          <div class="code-view-panel" id="code-view-panel-py" role="tabpanel" aria-labelledby="code-view-tab-py" data-panel="py" hidden></div>
+          <div class="code-view-panel" id="code-view-panel-curl" role="tabpanel" aria-labelledby="code-view-tab-curl" data-panel="curl" hidden></div>
+        </div>
+
+        <div class="code-view-footer">
+          <span>Reflects current settings at time of open.</span>
+          <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool" target="_blank" rel="noopener">Anthropic advisor tool docs →</a>
+        </div>
+      </div>
+    </div>
 
     <!-- About modal -->
     <div id="about-modal" class="about-modal" role="dialog" aria-modal="true">

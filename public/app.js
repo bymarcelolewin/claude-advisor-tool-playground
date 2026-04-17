@@ -321,6 +321,103 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ============================================================================
+// Code View modal — </> button in top-nav. Phase 4 wires up the shell only;
+// snippet generation lands in Phase 5.
+// ============================================================================
+const codeViewModalEl = $("#code-view-modal");
+const toggleCodeViewBtn = $("#toggle-code-view");
+const codeViewTabs = codeViewModalEl ? codeViewModalEl.querySelectorAll(".code-view-tab") : [];
+const codeViewPanels = codeViewModalEl ? codeViewModalEl.querySelectorAll(".code-view-panel") : [];
+
+// Tracks the element that had focus before the modal opened so we can restore
+// it on close (accessibility — keyboard users land back where they were).
+let codeViewLastFocus = null;
+
+function setCodeViewActiveTab(tabId) {
+  codeViewTabs.forEach((t) => {
+    const isActive = t.dataset.tab === tabId;
+    t.classList.toggle("active", isActive);
+    t.setAttribute("aria-selected", isActive ? "true" : "false");
+    t.setAttribute("tabindex", isActive ? "0" : "-1");
+  });
+  codeViewPanels.forEach((p) => {
+    const isActive = p.dataset.panel === tabId;
+    p.classList.toggle("active", isActive);
+    if (isActive) p.removeAttribute("hidden");
+    else p.setAttribute("hidden", "");
+  });
+}
+
+function openCodeView() {
+  if (!codeViewModalEl) return;
+  codeViewLastFocus = document.activeElement;
+  codeViewModalEl.classList.add("open");
+  // Default to the TypeScript tab on every open.
+  setCodeViewActiveTab("ts");
+  // Phase 4: panels are placeholders. Phase 5 will populate them with real snippets.
+  codeViewPanels.forEach((p) => {
+    if (!p.dataset.placeholderShown) {
+      p.innerHTML = '<pre style="margin:0;padding:24px;color:var(--muted);font-family:var(--mono);font-size:12px;">' +
+        '// Phase 4 placeholder — snippet generation lands in Phase 5.\n// Tab: ' + p.dataset.panel +
+        '</pre>';
+      p.dataset.placeholderShown = "1";
+    }
+  });
+  // Move focus into the modal — start on the active tab so keyboard users can
+  // navigate immediately with arrow keys (when wired up in Phase 6).
+  const activeTab = codeViewModalEl.querySelector(".code-view-tab.active");
+  if (activeTab) activeTab.focus();
+}
+
+function closeCodeView() {
+  if (!codeViewModalEl) return;
+  codeViewModalEl.classList.remove("open");
+  if (codeViewLastFocus && typeof codeViewLastFocus.focus === "function") {
+    codeViewLastFocus.focus();
+  }
+  codeViewLastFocus = null;
+}
+
+if (toggleCodeViewBtn) {
+  toggleCodeViewBtn.addEventListener("click", openCodeView);
+}
+if (codeViewModalEl) {
+  codeViewModalEl.querySelectorAll("[data-code-view-close]").forEach((el) => {
+    el.addEventListener("click", closeCodeView);
+  });
+  codeViewTabs.forEach((t) => {
+    t.addEventListener("click", () => setCodeViewActiveTab(t.dataset.tab));
+  });
+}
+
+// Esc closes the modal. Focus trap: keep Tab cycling within the modal
+// while it's open (only when the modal is the topmost open dialog).
+document.addEventListener("keydown", (e) => {
+  if (!codeViewModalEl || !codeViewModalEl.classList.contains("open")) return;
+
+  if (e.key === "Escape") {
+    closeCodeView();
+    return;
+  }
+
+  if (e.key === "Tab") {
+    const focusable = codeViewModalEl.querySelectorAll(
+      'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    );
+    if (focusable.length === 0) return;
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (e.shiftKey && document.activeElement === first) {
+      e.preventDefault();
+      last.focus();
+    } else if (!e.shiftKey && document.activeElement === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  }
+});
+
+// ============================================================================
 // Settings persistence
 // ============================================================================
 const STORAGE_KEY = "advisor-playground-settings-v1";
