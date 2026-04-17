@@ -30,7 +30,7 @@ Build the reusable `makeCopyButton()` helper and `.copy-btn` styling. Used by bo
 | 2.1 | Implement makeCopyButton helper | Added `makeCopyButton(getText, opts)` to `public/app.js` (after `escapeHtml`). Returns a `<button class="copy-btn">` with shared `COPY_ICON_SVG` + "Copy" label span. Lazy `getText()` invocation, async clipboard write, "✓ Copied" success state for 1400ms with green class, "Copy failed" error state with `--danger` class. Resets cleanly even if clicked rapidly (clears prior timer). | None | 🟢 Completed | AGENT |
 | 2.2 | Add copy-btn CSS | Added `.copy-btn` styles to `public/styles.css` (after `.btn-danger`). Dark panel background, accent-blue hover, `.copy-btn.copied` in `#7ed58a` green, `.copy-btn.failed` in `var(--danger)` red, focus-visible outline for keyboard users. Sized to fit comfortably in code-block corners. | 2.1 | 🟢 Completed | AGENT |
 | 2.3 | Test phase 2 | USER confirmed via smoke harness: pasted text matched expected three-line content; "✓ Copied" state and hover both worked. Smoke harness removed from index.html and app.js. | 2.1-2.2 | 🟢 Completed | USER |
-| 2.4 | Commit phase 2 | USER commits phase 2 to git. | 2.3 | 🔴 Not Started | USER |
+| 2.4 | Commit phase 2 | USER committed phase 2 to git. | 2.3 | 🟢 Completed | USER |
 
 ## Phase 3: Full I/O Viewer Upgrades (F34 + F35)
 
@@ -38,12 +38,13 @@ Apply Prism highlighting and copy buttons to the existing Full I/O viewer JSON b
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 3.1 | Wrap I/O JSON in language-json blocks | Update the Full I/O viewer renderer in `public/app.js` so request and response JSON blocks are wrapped in `<pre><code class="language-json">...</code></pre>`. Keep the existing `escapeHtml()` / `textContent` path for XSS safety. | 1.4 | 🔴 Not Started | AGENT |
-| 3.2 | Apply Prism highlighting to I/O blocks | Call `Prism.highlightElement(codeEl)` after each request/response block is inserted into the DOM. | 3.1 | 🔴 Not Started | AGENT |
-| 3.3 | Add copy buttons to I/O blocks | Attach a `makeCopyButton()` to each request and response block (top-right corner). The `getText` callback returns the raw JSON string for the block being copied. | 2.1, 3.1 | 🔴 Not Started | AGENT |
-| 3.4 | Verify no layout regression | Confirm the Full I/O viewer's existing max-height, scroll behavior, and collapse state still work. Adjust CSS only if Prism injection breaks layout. | 3.1-3.3 | 🔴 Not Started | AGENT |
-| 3.5 | Test phase 3 | USER tests: open Full I/O viewer on multiple turns/branches; JSON renders with syntax colors matching the theme; copy button copies correct content for the right block; no layout regressions. | 3.1-3.4 | 🔴 Not Started | USER |
-| 3.6 | Commit phase 3 | USER commits phase 3 to git. | 3.5 | 🔴 Not Started | USER |
+| 3.1 | Wrap I/O JSON in language-json blocks | Refactored the Full I/O viewer renderer in `public/app.js` to build DOM imperatively. Added `renderIOSection(label, jsonText, copyable)` helper that creates `<pre><code class="language-json">` blocks with `textContent` (preserves XSS safety from the previous `escapeHtml` path). | 1.4 | 🟢 Completed | AGENT |
+| 3.2 | Apply Prism highlighting to I/O blocks | `renderIOSection()` calls `Prism.highlightElement(code)` immediately after appending the code block. Guarded with `typeof Prism !== "undefined"` so dev failures don't break the viewer. | 3.1 | 🟢 Completed | AGENT |
+| 3.3 | Add copy buttons to I/O blocks | `renderIOSection()` adds a `makeCopyButton()` to the section header (right-aligned next to the label). Closed-over `jsonText` so the button always copies the original JSON. Skipped for "(unavailable)" requests. | 2.1, 3.1 | 🟢 Completed | AGENT |
+| 3.4 | Verify no layout regression | Added `.raw-toggle pre[class*="language-"]` override in `styles.css` to restore the I/O viewer's compact 10px font. Added `.io-section-header` flex container with `margin-bottom: 8px` for breathing room between the label/copy row and the code block. Label now stands alone (rounded all corners) instead of "hanging onto" the pre. | 3.1-3.3 | 🟢 Completed | AGENT |
+| 3.4a | Add global "Wrap code" toggle (added during phase) | Added a global `Wrap code` checkbox to the trace pane header next to `Sync panes`. Replaces the per-section wrap toggle from an earlier iteration. Toggling it instantly applies/removes `.io-nowrap` on all rendered I/O code blocks and is inherited by newly rendered sections. Default checked. Session-only state (not persisted to localStorage). Wrap mode uses `white-space: pre-wrap` + `overflow-wrap: anywhere` (both on `<pre>` and inner `<code>` since Prism's theme sets `white-space: pre` on the inner code element). | 3.3 | 🟢 Completed | AGENT |
+| 3.5 | Test phase 3 | USER confirmed: syntax colors render correctly across multiple branches/turns; per-block copy works; global Wrap toggle affects all branches simultaneously and is inherited by new sections; no layout regressions. | 3.1-3.4a | 🟢 Completed | USER |
+| 3.6 | Commit phase 3 | USER committing phase 3 to git. | 3.5 | 🟢 Completed | USER |
 
 ## Phase 4: Code View Modal Shell (F33 part 1)
 

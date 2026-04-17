@@ -286,10 +286,16 @@
             </svg>
             <span>Trace</span>
           </span>
-          <label class="sync-toggle" title="Sync collapse/expand between Chat and Trace panes">
-            <input type="checkbox" id="sync-panes" checked />
-            <span>Sync panes</span>
-          </label>
+          <div class="trace-toggles">
+            <label class="sync-toggle" title="Wrap long lines in the Full I/O viewer (off = horizontal scroll)">
+              <input type="checkbox" id="wrap-trace-code" checked />
+              <span>Wrap code</span>
+            </label>
+            <label class="sync-toggle" title="Sync collapse/expand between Chat and Trace panes">
+              <input type="checkbox" id="sync-panes" checked />
+              <span>Sync panes</span>
+            </label>
+          </div>
         </div>
         <div id="trace-totals" class="trace-totals" hidden></div>
         <div id="trace"></div>

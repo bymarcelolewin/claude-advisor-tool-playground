@@ -724,6 +724,12 @@ main {
   box-sizing: border-box;
 }
 
+.trace-toggles {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
 .sync-toggle {
   display: flex;
   align-items: center;
@@ -1238,8 +1244,52 @@ main {
   overflow-y: auto;
 }
 
+/* Prism applies its own font-size to pre[class*="language-"]; restore the
+ * compact 10px sizing that the I/O viewer uses to fit large JSON payloads.
+ * Wrap is ON by default (.io-nowrap toggles back to horizontal scroll).
+ * Both pre AND code need the white-space rule: Prism's theme sets
+ * `white-space: pre` on the inner code element, which would otherwise win. */
+.raw-toggle pre[class*="language-"] {
+  font-size: 10px;
+  line-height: 1.5;
+  padding: 10px;
+  margin: 0;
+  border-radius: 6px;
+}
+
+.raw-toggle pre[class*="language-"],
+.raw-toggle pre[class*="language-"] code {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.raw-toggle pre[class*="language-"].io-nowrap,
+.raw-toggle pre[class*="language-"].io-nowrap code {
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+}
+
+.raw-toggle pre[class*="language-"].io-nowrap {
+  overflow-x: auto;
+}
+
 .io-section {
   margin-top: 10px;
+}
+
+.io-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.io-section-header .copy-btn {
+  padding: 3px 8px;
+  font-size: 10px;
 }
 
 .io-label {
@@ -1250,12 +1300,8 @@ main {
   color: var(--accent);
   padding: 4px 8px;
   background: var(--panel-3);
-  border-radius: 4px 4px 0 0;
+  border-radius: 4px;
   display: inline-block;
-}
-
-.io-section pre {
-  border-top-left-radius: 0;
 }
 
 .empty {

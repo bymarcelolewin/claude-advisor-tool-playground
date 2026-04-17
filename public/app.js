@@ -270,6 +270,20 @@ const openaiKeyEl = $("#openai-key");
 const openaiKeyWrapperEl = $("#openai-key-wrapper");
 const judgePromptEl = $("#judge-prompt");
 const syncPanesEl = $("#sync-panes");
+const wrapTraceCodeEl = $("#wrap-trace-code");
+
+// Apply / remove the no-wrap class to all rendered I/O code blocks. Called
+// when the global "Wrap code" toggle changes so all branches stay in sync.
+function applyTraceWrapState() {
+  const noWrap = !(wrapTraceCodeEl && wrapTraceCodeEl.checked);
+  document.querySelectorAll('.raw-toggle pre[class*="language-"]').forEach((pre) => {
+    pre.classList.toggle("io-nowrap", noWrap);
+  });
+}
+
+if (wrapTraceCodeEl) {
+  wrapTraceCodeEl.addEventListener("change", applyTraceWrapState);
+}
 const welcomeVersionEl = $("#welcome-version");
 const headerVersionEl = $("#header-version");
 const settingsVersionEl = $("#settings-version");
@@ -661,6 +675,46 @@ function makeCopyButton(getText, opts = {}) {
   });
 
   return btn;
+}
+
+// Builds a Full I/O viewer section: header (label + copy button) +
+// Prism-highlighted JSON code block. The wrap state is global (controlled by
+// the "Wrap code" toggle in the trace header), not per-section.
+// `copyable=false` skips the copy button (e.g. for "(unavailable)").
+function renderIOSection(label, jsonText, copyable) {
+  const section = document.createElement("div");
+  section.className = "io-section";
+
+  const header = document.createElement("div");
+  header.className = "io-section-header";
+
+  const labelEl = document.createElement("div");
+  labelEl.className = "io-label";
+  labelEl.textContent = label;
+  header.appendChild(labelEl);
+
+  if (copyable) {
+    header.appendChild(makeCopyButton(() => jsonText, { ariaLabel: `Copy ${label}` }));
+  }
+  section.appendChild(header);
+
+  const pre = document.createElement("pre");
+  const code = document.createElement("code");
+  code.className = "language-json";
+  code.textContent = jsonText;
+  // Inherit the current global wrap state on render so newly added sections
+  // match what the user already sees in other branches.
+  if (wrapTraceCodeEl && !wrapTraceCodeEl.checked) {
+    pre.classList.add("io-nowrap");
+  }
+  pre.appendChild(code);
+  section.appendChild(pre);
+
+  if (typeof Prism !== "undefined") {
+    Prism.highlightElement(code);
+  }
+
+  return section;
 }
 
 function addMessage(role, text, cls = "", parent = messagesEl) {
@@ -1220,17 +1274,16 @@ function renderTurnCard(turnIdx, branch, run, userText, opts = {}) {
     content: run.content,
   };
 
-  raw.innerHTML = `
-    <summary>View full I/O (request + response)</summary>
-    <div class="io-section">
-      <div class="io-label">Request sent to the API</div>
-      <pre>${escapeHtml(requestObj ? JSON.stringify(requestObj, null, 2) : "(unavailable)")}</pre>
-    </div>
-    <div class="io-section">
-      <div class="io-label">Response from the API</div>
-      <pre>${escapeHtml(JSON.stringify(responseObj, null, 2))}</pre>
-    </div>
-  `;
+  const summary = document.createElement("summary");
+  summary.textContent = "View full I/O (request + response)";
+  raw.appendChild(summary);
+
+  const requestText = requestObj ? JSON.stringify(requestObj, null, 2) : "(unavailable)";
+  const responseText = JSON.stringify(responseObj, null, 2);
+
+  raw.appendChild(renderIOSection("Request sent to the API", requestText, requestObj != null));
+  raw.appendChild(renderIOSection("Response from the API", responseText, true));
+
   body.appendChild(raw);
 
   turn.appendChild(body);
