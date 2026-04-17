@@ -11,10 +11,7 @@ This document lists features and enhancements derived from the plan. It is a liv
 
 ## Backlog
 
-| #  | Feature             | Description                               | Source |
-|----|---------------------|-------------------------------------------|--------|
-| F33 | Code View | Add a new button at the top nav with a code icon `</>` that opens a popup with 2 tabs (TypeScript default, Python) showing the actual code call a user can put in their code. Includes everything needed with placeholder API token. | User |
-| F34 | Prism JSON Syntax Highlighting | Update the "View full I/O (request + response)" viewer to use Prism for proper color coding of the JSON content. | User |
+_No items currently in the backlog._
 
 ## v1.0.0 — Initial Release - 🟢 Completed
 Core playground with chat, tracing, compare modes, evaluation, and full I/O viewer.
@@ -83,3 +80,12 @@ Bring the app up to date with the latest Anthropic advisor tool API capabilities
 | F30 | Error codes display | Render advisor error codes clearly in trace step cards | Medium | 🟢 Completed |
 | F31 | System prompt presets | Dropdown: Recommended / Precise / Custom | High | 🟢 Completed |
 | F32 | About box link fix | Change CHANGELOG.md reference to release-notes.md | Low | 🟢 Completed |
+
+## v1.5.0 — Code View & Syntax Highlighting - 🔴 Not Started
+Add a Code View popup that shows the exact Anthropic API call for the user's current configuration (TypeScript / Python / curl), and introduce Prism-based syntax highlighting everywhere code is displayed. Both features share Prism as a dependency, so they're bundled.
+
+| ID  | Feature                 | Description                              | Priority | Status |
+|-----|-------------------------|------------------------------------------|----------|--------|
+| F33 | Code View popup | New `</>` icon in the top-nav cluster (`</>` `ⓘ` `⚙`) opens a centered modal with three tabs: TypeScript, Python, curl. Snippet is **dynamic** — reflects current executor, advisor, effort (when supported), max_uses (when set), caching TTL (when not off), max_tokens, and active system prompt. Beta header `advisor-tool-2026-03-01` included. User prompt hoisted to a top-level variable (`const prompt = "prompt here"` / `prompt = "prompt here"` / `PROMPT="prompt here"` for curl via heredoc). Settings pill rail above tabs summarizes the config. Per-tab copy button. Modal pattern matches existing Settings/About modals (border, shadow, close button). | High | 🔴 Not Started |
+| F34 | Prism syntax highlighting | Self-host Prism in `/public/vendor/prism/` with only the languages we need (JSON, TypeScript, JavaScript, Python, Bash). Apply to: (a) the Full I/O viewer JSON in the trace pane, (b) the Code View snippets. Dark theme tuned to match the app palette (base `#0f1115`). No CDN — keeps the stateless, single-origin security posture from v1.2.0 intact. | High | 🔴 Not Started |
+| F35 | Copy button on Full I/O viewer | While we're upgrading the Full I/O viewer for Prism, add a copy-to-clipboard button to the request and response JSON blocks. Matches the copy-button styling used in the Code View popup for consistency. | Medium | 🔴 Not Started |

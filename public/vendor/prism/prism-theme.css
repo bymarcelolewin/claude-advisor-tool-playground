@@ -1,0 +1,162 @@
+/* Prism v1.30.0 — see vendor/prism/README.md
+ *
+ * Custom dark theme for the Claude Advisor Tool Playground.
+ * Token colors map to the app palette (see :root in /public/styles.css):
+ *   background  → var(--bg)              #0f1115
+ *   text        → var(--text)            #e6e8ee
+ *   comment     → var(--muted)           #8a91a3
+ *   string      → #a6da95 (soft green)
+ *   keyword     → #b86bff (advisor purple)
+ *   number      → #e0b25c (amber, matches eval accent)
+ *   function    → var(--accent)          #7aa2ff
+ *   property    → var(--accent)          #7aa2ff
+ *   punctuation → var(--muted)
+ */
+
+code[class*="language-"],
+pre[class*="language-"] {
+  color: var(--text);
+  background: none;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  text-align: left;
+  white-space: pre;
+  word-spacing: normal;
+  word-break: normal;
+  word-wrap: normal;
+  -moz-tab-size: 2;
+  -o-tab-size: 2;
+  tab-size: 2;
+  -webkit-hyphens: none;
+  -moz-hyphens: none;
+  -ms-hyphens: none;
+  hyphens: none;
+}
+
+pre[class*="language-"] {
+  padding: 16px 18px;
+  margin: 0;
+  overflow: auto;
+  background: var(--bg);
+  border-radius: 0;
+}
+
+:not(pre) > code[class*="language-"] {
+  padding: 2px 5px;
+  background: var(--panel-3);
+  border-radius: 4px;
+  white-space: normal;
+}
+
+/* ── Comments and similar ──────────────────────────────── */
+.token.comment,
+.token.prolog,
+.token.doctype,
+.token.cdata {
+  color: var(--muted);
+  font-style: italic;
+}
+
+/* ── Punctuation and namespaces ────────────────────────── */
+.token.punctuation {
+  color: var(--muted);
+}
+
+.token.namespace {
+  opacity: 0.75;
+}
+
+/* ── Properties, JSON keys, attribute names ────────────── */
+.token.property,
+.token.tag,
+.token.attr-name {
+  color: #7aa2ff;
+}
+
+/* ── Booleans, numbers, constants ──────────────────────── */
+.token.boolean,
+.token.number,
+.token.constant,
+.token.symbol {
+  color: #e0b25c;
+}
+
+/* ── Strings and string-like ───────────────────────────── */
+.token.string,
+.token.char,
+.token.attr-value,
+.token.inserted {
+  color: #a6da95;
+}
+
+/* ── Keywords and language constructs ──────────────────── */
+.token.keyword,
+.token.atrule,
+.token.important {
+  color: #b86bff;
+  font-weight: 500;
+}
+
+/* ── Operators ─────────────────────────────────────────── */
+.token.operator,
+.token.entity,
+.token.url {
+  color: var(--text);
+}
+
+/* ── Builtins, classes, functions ──────────────────────── */
+.token.builtin,
+.token.class-name {
+  color: #7aa2ff;
+}
+
+.token.function {
+  color: #7aa2ff;
+}
+
+/* ── Variables (e.g. $PROMPT in bash) ──────────────────── */
+.token.variable {
+  color: #e0b25c;
+}
+
+/* ── Regex and special ─────────────────────────────────── */
+.token.regex {
+  color: #a6da95;
+}
+
+/* ── Diff-style markers ────────────────────────────────── */
+.token.deleted {
+  color: var(--danger);
+}
+
+/* ── Selectors (CSS) ───────────────────────────────────── */
+.token.selector {
+  color: #b86bff;
+}
+
+.token.italic {
+  font-style: italic;
+}
+
+.token.bold {
+  font-weight: bold;
+}
+
+/* ── Bash-specific tokens ──────────────────────────────── */
+.language-bash .token.function {
+  color: #7aa2ff;
+}
+
+.language-bash .token.parameter {
+  color: var(--text);
+}
+
+/* ── JSON-specific: ensure property keys are clearly distinguished ── */
+.language-json .token.property {
+  color: #7aa2ff;
+}
+
+.language-json .token.string {
+  color: #a6da95;
+}

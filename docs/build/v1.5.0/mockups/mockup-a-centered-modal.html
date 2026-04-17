@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mockup A — Centered Modal with Horizontal Tabs</title>
+<!-- Prism via CDN for mockup only. Production will self-host in /public/vendor/prism/. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c202b;
+    --panel-3: #232837;
+    --border: #2a2f3d;
+    --text: #e6e8ee;
+    --muted: #8a91a3;
+    --accent: #7aa2ff;
+    --executor: #4a7aff;
+    --advisor: #b86bff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+
+  /* Fake page background — simulates the chat + trace panes behind the modal */
+  .page-bg {
+    position: absolute; inset: 0;
+    display: grid; grid-template-columns: 30% 70%;
+    opacity: 0.25; filter: blur(1px);
+  }
+  .page-bg .chat { background: var(--panel); border-right: 1px solid var(--border); }
+  .page-bg .trace { background: var(--bg); }
+
+  /* Modal wrapper */
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: flex-start; justify-content: center;
+    padding: 60px 20px 20px;
+    overflow-y: auto;
+  }
+  .backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.65);
+    backdrop-filter: blur(2px);
+    z-index: 0;
+  }
+  .card {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 880px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    display: flex; flex-direction: column;
+    max-height: calc(100vh - 80px);
+  }
+  .header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+    border-radius: 12px 12px 0 0;
+  }
+  .header h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .header h2 .code-icon {
+    font-family: var(--mono); color: var(--accent); font-size: 13px;
+    border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px;
+  }
+  .header .subtitle {
+    font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 10px;
+  }
+  .btn-close {
+    background: transparent; border: none; color: var(--muted);
+    font-size: 22px; line-height: 1; padding: 2px 8px; cursor: pointer;
+  }
+  .btn-close:hover { color: var(--text); background: var(--panel-3); border-radius: 4px; }
+
+  /* Current settings summary bar */
+  .settings-summary {
+    display: flex; flex-wrap: wrap; gap: 6px;
+    padding: 10px 18px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+  }
+  .pill {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 3px 8px; border-radius: 999px;
+    background: var(--panel-3); border: 1px solid var(--border);
+    color: var(--text); font-family: var(--mono);
+  }
+  .pill .k { color: var(--muted); }
+  .pill.exec { border-color: rgba(74, 122, 255, 0.4); }
+  .pill.exec .k { color: var(--executor); }
+  .pill.adv { border-color: rgba(184, 107, 255, 0.4); }
+  .pill.adv .k { color: var(--advisor); }
+
+  /* Tab row */
+  .tabs {
+    display: flex; gap: 0;
+    padding: 0 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .tab {
+    padding: 10px 16px;
+    font-size: 13px; font-weight: 500;
+    color: var(--muted);
+    border: none; background: transparent;
+    border-bottom: 2px solid transparent;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .tab.active { color: var(--text); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text); }
+
+  /* Code area */
+  .code-body { position: relative; overflow: auto; flex: 1 1 auto; }
+  .code-body pre[class*="language-"] {
+    margin: 0; padding: 18px;
+    background: var(--bg) !important;
+    font-size: 12.5px; line-height: 1.55;
+    border-radius: 0;
+  }
+  .copy-btn {
+    position: absolute; top: 10px; right: 12px;
+    background: var(--panel-3); border: 1px solid var(--border);
+    color: var(--text); font-size: 11px; font-weight: 500;
+    padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    display: flex; align-items: center; gap: 5px;
+    font-family: inherit;
+  }
+  .copy-btn:hover { background: var(--panel); border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { color: #7ed58a; border-color: #7ed58a; }
+
+  .footer {
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--panel-2);
+    border-radius: 0 0 12px 12px;
+    font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Mockup label */
+  .mockup-label {
+    position: fixed; top: 10px; left: 10px; z-index: 200;
+    background: var(--panel-3); color: var(--text);
+    padding: 6px 10px; border-radius: 6px; font-size: 11px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Mockup A · Centered Modal · Horizontal Tabs</div>
+
+<div class="page-bg">
+  <div class="chat"></div>
+  <div class="trace"></div>
+</div>
+
+<div class="modal">
+  <div class="backdrop"></div>
+  <div class="card">
+    <div class="header">
+      <h2>
+        <span class="code-icon">&lt;/&gt;</span>
+        Code View
+        <span class="subtitle">Generated from your current configuration</span>
+      </h2>
+      <button class="btn-close" aria-label="Close">×</button>
+    </div>
+
+    <div class="settings-summary">
+      <span class="pill exec"><span class="k">executor:</span> claude-sonnet-4-6</span>
+      <span class="pill adv"><span class="k">advisor:</span> claude-opus-4-6</span>
+      <span class="pill"><span class="k">effort:</span> medium</span>
+      <span class="pill"><span class="k">max_uses:</span> 3</span>
+      <span class="pill"><span class="k">caching:</span> 5m</span>
+      <span class="pill"><span class="k">max_tokens:</span> 8192</span>
+    </div>
+
+    <div class="tabs" role="tablist">
+      <button class="tab active" data-tab="ts">TypeScript</button>
+      <button class="tab" data-tab="py">Python</button>
+      <button class="tab" data-tab="curl">curl</button>
+    </div>
+
+    <div class="code-body">
+      <button class="copy-btn" id="copy-btn">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+        </svg>
+        Copy
+      </button>
+
+      <div class="tab-panel active" id="panel-ts">
+<pre><code class="language-typescript">import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Edit this to change what you send to the model.
+const prompt = "prompt here";
+
+const response = await client.beta.messages.create(
+  {
+    model: "claude-sonnet-4-6",
+    max_tokens: 8192,
+    system: "You have access to an advisor tool. Call it before finalizing answers.",
+    output_config: { effort: "medium" },
+    tools: [
+      {
+        type: "advisor_20260301",
+        name: "advisor",
+        model: "claude-opus-4-6",
+        max_uses: 3,
+        caching: { type: "ephemeral", ttl: "5m" },
+      },
+    ],
+    messages: [
+      { role: "user", content: prompt },
+    ],
+  },
+  { betas: ["advisor-tool-2026-03-01"] }
+);
+
+console.log(response);
+</code></pre>
+      </div>
+
+      <div class="tab-panel" id="panel-py">
+<pre><code class="language-python">import os
+from anthropic import Anthropic
+
+client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+# Edit this to change what you send to the model.
+prompt = "prompt here"
+
+response = client.beta.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=8192,
+    system="You have access to an advisor tool. Call it before finalizing answers.",
+    output_config={"effort": "medium"},
+    tools=[
+        {
+            "type": "advisor_20260301",
+            "name": "advisor",
+            "model": "claude-opus-4-6",
+            "max_uses": 3,
+            "caching": {"type": "ephemeral", "ttl": "5m"},
+        }
+    ],
+    messages=[
+        {"role": "user", "content": prompt},
+    ],
+    betas=["advisor-tool-2026-03-01"],
+)
+
+print(response)
+</code></pre>
+      </div>
+
+      <div class="tab-panel" id="panel-curl">
+<pre><code class="language-bash"># Edit this to change what you send to the model.
+PROMPT="prompt here"
+
+curl https://api.anthropic.com/v1/messages \
+  --header "x-api-key: $ANTHROPIC_API_KEY" \
+  --header "anthropic-version: 2023-06-01" \
+  --header "anthropic-beta: advisor-tool-2026-03-01" \
+  --header "content-type: application/json" \
+  --data @- &lt;&lt;EOF
+{
+  "model": "claude-sonnet-4-6",
+  "max_tokens": 8192,
+  "system": "You have access to an advisor tool. Call it before finalizing answers.",
+  "output_config": { "effort": "medium" },
+  "tools": [
+    {
+      "type": "advisor_20260301",
+      "name": "advisor",
+      "model": "claude-opus-4-6",
+      "max_uses": 3,
+      "caching": { "type": "ephemeral", "ttl": "5m" }
+    }
+  ],
+  "messages": [
+    { "role": "user", "content": "$PROMPT" }
+  ]
+}
+EOF
+</code></pre>
+      </div>
+    </div>
+
+    <div class="footer">
+      <span>Replace <code style="font-family:var(--mono); color:var(--text);">"prompt here"</code> with your actual user message.</span>
+      <a href="#">Anthropic advisor tool docs →</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script>
+  document.querySelectorAll(".tab").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".tab").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      document.getElementById("panel-" + t.dataset.tab).classList.add("active");
+    });
+  });
+  document.getElementById("copy-btn").addEventListener("click", (e) => {
+    const active = document.querySelector(".tab-panel.active code");
+    navigator.clipboard.writeText(active.innerText);
+    const btn = e.currentTarget;
+    btn.classList.add("copied");
+    const orig = btn.innerHTML;
+    btn.innerHTML = "✓ Copied";
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove("copied"); }, 1400);
+  });
+</script>
+</body>
+</html>

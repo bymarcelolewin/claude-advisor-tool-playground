@@ -1,0 +1,360 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>Mockup C — Full-Screen Modal with Left Sidebar</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" />
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --panel-2: #1c202b;
+    --panel-3: #232837;
+    --border: #2a2f3d;
+    --text: #e6e8ee;
+    --muted: #8a91a3;
+    --accent: #7aa2ff;
+    --executor: #4a7aff;
+    --advisor: #b86bff;
+    --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; }
+
+  .page-bg {
+    position: absolute; inset: 0;
+    display: grid; grid-template-columns: 30% 70%;
+    opacity: 0.2; filter: blur(1px);
+  }
+  .page-bg .chat { background: var(--panel); border-right: 1px solid var(--border); }
+  .page-bg .trace { background: var(--bg); }
+
+  .modal {
+    position: fixed; inset: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: center;
+    padding: 30px;
+  }
+  .backdrop {
+    position: fixed; inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(3px);
+    z-index: 0;
+  }
+  .card {
+    position: relative; z-index: 1;
+    width: 100%; max-width: 1120px;
+    height: calc(100vh - 60px);
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
+    display: grid; grid-template-columns: 220px 1fr; grid-template-rows: auto 1fr auto;
+    overflow: hidden;
+  }
+  .top {
+    grid-column: 1 / -1;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--panel-2);
+  }
+  .top h2 { margin: 0; font-size: 15px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .top h2 .code-icon {
+    font-family: var(--mono); color: var(--accent); font-size: 13px;
+    border: 1px solid var(--border); padding: 2px 6px; border-radius: 4px;
+  }
+  .btn-close {
+    background: transparent; border: none; color: var(--muted);
+    font-size: 22px; line-height: 1; padding: 2px 8px; cursor: pointer;
+  }
+  .btn-close:hover { color: var(--text); background: var(--panel-3); border-radius: 4px; }
+
+  /* Sidebar (left) */
+  .sidebar {
+    grid-column: 1; grid-row: 2 / 4;
+    background: var(--panel-2);
+    border-right: 1px solid var(--border);
+    padding: 14px 0;
+    display: flex; flex-direction: column;
+  }
+  .sidebar-section { padding: 0 14px; margin-bottom: 18px; }
+  .sidebar-section h3 {
+    margin: 0 0 8px 0;
+    font-size: 10px; font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase; letter-spacing: 0.6px;
+  }
+  .lang-list { display: flex; flex-direction: column; gap: 2px; }
+  .lang-btn {
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px;
+    background: transparent;
+    border: 1px solid transparent; border-radius: 6px;
+    color: var(--muted);
+    text-align: left; cursor: pointer;
+    font-family: inherit; font-size: 13px;
+  }
+  .lang-btn:hover { background: var(--panel-3); color: var(--text); }
+  .lang-btn.active {
+    background: var(--panel-3); color: var(--text);
+    border-color: var(--accent);
+  }
+  .lang-btn .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--muted); flex-shrink: 0; }
+  .lang-btn.ts .dot { background: #3178c6; }
+  .lang-btn.py .dot { background: #ffd43b; }
+  .lang-btn.curl .dot { background: #7ed58a; }
+
+  .settings-list {
+    display: flex; flex-direction: column; gap: 6px;
+    font-family: var(--mono); font-size: 11px;
+  }
+  .settings-list .row {
+    display: flex; justify-content: space-between;
+    padding: 4px 0;
+    border-bottom: 1px dashed var(--border);
+  }
+  .settings-list .row:last-child { border-bottom: 0; }
+  .settings-list .k { color: var(--muted); }
+  .settings-list .v { color: var(--text); }
+  .settings-list .v.exec { color: var(--executor); }
+  .settings-list .v.adv { color: var(--advisor); }
+
+  /* Main code area */
+  .main {
+    grid-column: 2; grid-row: 2;
+    overflow: hidden;
+    display: flex; flex-direction: column;
+  }
+  .main-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 18px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    font-size: 12px; color: var(--muted);
+  }
+  .main-header .filename { font-family: var(--mono); color: var(--text); }
+  .copy-btn {
+    background: var(--panel-3); border: 1px solid var(--border);
+    color: var(--text); font-size: 11px; font-weight: 500;
+    padding: 5px 10px; border-radius: 6px; cursor: pointer;
+    font-family: inherit;
+    display: inline-flex; align-items: center; gap: 5px;
+  }
+  .copy-btn:hover { background: var(--panel); border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { color: #7ed58a; border-color: #7ed58a; }
+
+  .code-body { overflow: auto; flex: 1 1 auto; background: var(--bg); }
+  .code-body pre[class*="language-"] {
+    margin: 0; padding: 18px;
+    background: var(--bg) !important;
+    font-size: 12.5px; line-height: 1.6;
+    border-radius: 0;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Footer */
+  .footer {
+    grid-column: 2; grid-row: 3;
+    padding: 10px 18px;
+    border-top: 1px solid var(--border);
+    background: var(--panel-2);
+    font-size: 11px; color: var(--muted);
+    display: flex; justify-content: space-between; align-items: center;
+  }
+  .footer a { color: var(--accent); text-decoration: none; }
+
+  .mockup-label {
+    position: fixed; top: 10px; left: 10px; z-index: 200;
+    background: var(--panel-3); color: var(--text);
+    padding: 6px 10px; border-radius: 6px; font-size: 11px;
+    border: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<div class="mockup-label">Mockup C · Full-Screen Modal · Left Sidebar</div>
+
+<div class="page-bg">
+  <div class="chat"></div>
+  <div class="trace"></div>
+</div>
+
+<div class="modal">
+  <div class="backdrop"></div>
+  <div class="card">
+    <div class="top">
+      <h2>
+        <span class="code-icon">&lt;/&gt;</span>
+        Code View
+      </h2>
+      <button class="btn-close" aria-label="Close">×</button>
+    </div>
+
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <h3>Language</h3>
+        <div class="lang-list">
+          <button class="lang-btn ts active" data-tab="ts"><span class="dot"></span>TypeScript</button>
+          <button class="lang-btn py" data-tab="py"><span class="dot"></span>Python</button>
+          <button class="lang-btn curl" data-tab="curl"><span class="dot"></span>curl</button>
+        </div>
+      </div>
+      <div class="sidebar-section">
+        <h3>Current Settings</h3>
+        <div class="settings-list">
+          <div class="row"><span class="k">executor</span><span class="v exec">sonnet-4-6</span></div>
+          <div class="row"><span class="k">advisor</span><span class="v adv">opus-4-6</span></div>
+          <div class="row"><span class="k">effort</span><span class="v">medium</span></div>
+          <div class="row"><span class="k">max_uses</span><span class="v">3</span></div>
+          <div class="row"><span class="k">caching</span><span class="v">5m</span></div>
+          <div class="row"><span class="k">max_tokens</span><span class="v">8192</span></div>
+        </div>
+      </div>
+      <div class="sidebar-section" style="margin-top:auto;">
+        <h3>Beta Header</h3>
+        <div class="settings-list">
+          <div class="row" style="border:0;"><span class="v" style="font-size:10.5px;">advisor-tool-2026-03-01</span></div>
+        </div>
+      </div>
+    </aside>
+
+    <section class="main">
+      <div class="main-header">
+        <span class="filename" id="filename">advisor-example.ts</span>
+        <button class="copy-btn" id="copy-btn">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+            <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+          </svg>
+          Copy
+        </button>
+      </div>
+      <div class="code-body">
+        <div class="tab-panel active" id="panel-ts">
+<pre><code class="language-typescript">import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+const response = await client.beta.messages.create(
+  {
+    model: "claude-sonnet-4-6",
+    max_tokens: 8192,
+    system: "You have access to an advisor tool. Call it before finalizing answers.",
+    output_config: { effort: "medium" },
+    tools: [
+      {
+        type: "advisor_20260301",
+        name: "advisor",
+        model: "claude-opus-4-6",
+        max_uses: 3,
+        caching: { type: "ephemeral", ttl: "5m" },
+      },
+    ],
+    messages: [
+      { role: "user", content: "prompt here" },
+    ],
+  },
+  { betas: ["advisor-tool-2026-03-01"] }
+);
+
+console.log(response);
+</code></pre>
+        </div>
+
+        <div class="tab-panel" id="panel-py">
+<pre><code class="language-python">import os
+from anthropic import Anthropic
+
+client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+response = client.beta.messages.create(
+    model="claude-sonnet-4-6",
+    max_tokens=8192,
+    system="You have access to an advisor tool. Call it before finalizing answers.",
+    output_config={"effort": "medium"},
+    tools=[
+        {
+            "type": "advisor_20260301",
+            "name": "advisor",
+            "model": "claude-opus-4-6",
+            "max_uses": 3,
+            "caching": {"type": "ephemeral", "ttl": "5m"},
+        }
+    ],
+    messages=[
+        {"role": "user", "content": "prompt here"},
+    ],
+    betas=["advisor-tool-2026-03-01"],
+)
+
+print(response)
+</code></pre>
+        </div>
+
+        <div class="tab-panel" id="panel-curl">
+<pre><code class="language-bash">curl https://api.anthropic.com/v1/messages \
+  --header "x-api-key: $ANTHROPIC_API_KEY" \
+  --header "anthropic-version: 2023-06-01" \
+  --header "anthropic-beta: advisor-tool-2026-03-01" \
+  --header "content-type: application/json" \
+  --data '{
+    "model": "claude-sonnet-4-6",
+    "max_tokens": 8192,
+    "system": "You have access to an advisor tool. Call it before finalizing answers.",
+    "output_config": { "effort": "medium" },
+    "tools": [
+      {
+        "type": "advisor_20260301",
+        "name": "advisor",
+        "model": "claude-opus-4-6",
+        "max_uses": 3,
+        "caching": { "type": "ephemeral", "ttl": "5m" }
+      }
+    ],
+    "messages": [
+      { "role": "user", "content": "prompt here" }
+    ]
+  }'
+</code></pre>
+        </div>
+      </div>
+    </section>
+
+    <div class="footer">
+      <span>Snippet reflects your current configuration. Replace <code style="font-family:var(--mono);color:var(--text);">"prompt here"</code> with your message.</span>
+      <a href="#">Anthropic advisor tool docs →</a>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script>
+  const fnames = { ts: "advisor-example.ts", py: "advisor_example.py", curl: "advisor-example.sh" };
+  document.querySelectorAll(".lang-btn").forEach(t => {
+    t.addEventListener("click", () => {
+      document.querySelectorAll(".lang-btn").forEach(x => x.classList.remove("active"));
+      document.querySelectorAll(".tab-panel").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      document.getElementById("panel-" + t.dataset.tab).classList.add("active");
+      document.getElementById("filename").textContent = fnames[t.dataset.tab];
+    });
+  });
+  document.getElementById("copy-btn").addEventListener("click", (e) => {
+    const active = document.querySelector(".tab-panel.active code");
+    navigator.clipboard.writeText(active.innerText);
+    const btn = e.currentTarget;
+    btn.classList.add("copied");
+    const orig = btn.innerHTML;
+    btn.innerHTML = "✓ Copied";
+    setTimeout(() => { btn.innerHTML = orig; btn.classList.remove("copied"); }, 1400);
+  });
+</script>
+</body>
+</html>
