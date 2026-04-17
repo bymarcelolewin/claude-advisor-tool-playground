@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.4.0-blue)
+![Version](https://img.shields.io/badge/version-1.5.0-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
@@ -284,7 +284,13 @@ This app is designed so that the server never stores any user data. Whether you 
 
 ## Digging deeper
 
-When you want to understand exactly why one branch's numbers differ from another, open any turn card and click **View full I/O (request + response)**. You'll see the exact JSON that went into `client.messages.create()` for that branch: model, system prompt, tools array, full message history, and beta header — plus the full response including `content[]` and `usage.iterations[]`. This is the primary diagnostic tool when something surprises you.
+When you want to understand exactly why one branch's numbers differ from another, open any turn card and click **View full I/O (request + response)**. You'll see the exact JSON that went into `client.messages.create()` for that branch: model, system prompt, tools array, full message history, and beta header — plus the full response including `content[]` and `usage.iterations[]`. This is the primary diagnostic tool when something surprises you. As of v1.5.0 the JSON is Prism-highlighted with a copy button on each block, and a global **Wrap code** toggle in the Trace pane header controls horizontal overflow across all branches.
+
+## Code View — grab the API call for your current config
+
+Click the `</>` icon in the top-nav to open the **Code View** modal. It generates the exact Anthropic API call for whatever Executor / Advisor / Effort / max_uses / caching / system-prompt you have active right now, in three languages: **TypeScript**, **Python**, and **curl**. Copy-paste the snippet into your own project, add your own prompt, set your API key, and you have a working advisor-tool call that matches what you were just experimenting with in the playground.
+
+Every snippet starts with a self-documenting comment block listing all current settings — including ones that are intentionally omitted from the call (like `Effort: n/a (Haiku does not support effort — omitted from call)` or `Caching: off (omitted from call)`) with the reason. Tick **Original prompt** to substitute your most recent chat prompt for the `"prompt here"` placeholder.
 
 ---
 
@@ -300,7 +306,7 @@ When you want to understand exactly why one branch's numbers differ from another
 
 ## Release Notes
 
-See [release-notes.md](release-notes.md) for the full release history, including the new **Conversation Totals Dashboard** shipped in v1.3.0.
+See [release-notes.md](release-notes.md) for the full release history, including the new **Code View** and **Prism syntax highlighting** shipped in v1.5.0.
 
 ---
 

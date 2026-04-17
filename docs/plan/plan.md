@@ -15,7 +15,7 @@ This document defines how the product will be built and when.
 | Environment Setup | Prerequisites or steps to get the app running in a local/dev environment. |
 
 ## Overview
-This plan covers the Claude Advisor Tool Playground — a web app for experimenting with Anthropic's advisor tool beta. The app is currently at v1.4.0 and deployed live on Railway. This plan documents the architecture and implementation as built, serving as a reference for future maintenance or updates as Anthropic evolves the advisor tool API.
+This plan covers the Claude Advisor Tool Playground — a web app for experimenting with Anthropic's advisor tool beta. The app is currently at v1.5.0 and deployed live on Railway. This plan documents the architecture and implementation as built, serving as a reference for future maintenance or updates as Anthropic evolves the advisor tool API.
 
 ## Architecture
 The app follows a simple **client-server monolith** pattern:
@@ -50,8 +50,9 @@ The app follows a simple **client-server monolith** pattern:
 - **Express Server** (`server.js`) — Single entry point handling all API routes, security middleware (CORS, rate limiting, HTTPS, headers), and AI provider calls. Key functions: `clientFor()` (API key validation), `stripAdvisorOnly()` (sentinel-based prompt splitting for fair baseline comparison), `branchesForMode()` (determines which execution paths to run), `callOne()` (fires a single branch), `runJudgeOnce()` (executes one evaluation pass).
 - **Chat Engine** (server `/api/chat`) — Accepts a user message + per-branch conversation histories, runs 1–3 branches in parallel via `Promise.all`, returns per-branch results with content, usage, timing, and the safe request copy.
 - **Evaluation Engine** (server `/api/evaluate`) — LLM-as-judge with 2-pass position-bias mitigation. Builds blinded candidate blocks in two orderings, fires both judge calls in parallel, parses/un-blinds results, averages scores, detects disagreement.
-- **Frontend App** (`public/app.js`) — All client logic: settings persistence, chat send loop, conversation history management per branch, trace rendering (step timeline, delta pills, summary tiles), evaluation trigger/display, thinking indicators, welcome slideshow, confirm modal.
-- **UI Shell** (`public/index.html` + `styles.css`) — Static markup and dark-themed styling. Split-pane layout (chat 30% / trace 70%), floating chat input, settings modal with 4 collapsible sections, CSS Grid-based trace with dynamic column count.
+- **Frontend App** (`public/app.js`) — All client logic: settings persistence, chat send loop, conversation history management per branch, trace rendering (step timeline, delta pills, summary tiles, Prism-highlighted Full I/O viewer, copy buttons, global Wrap toggle), evaluation trigger/display, thinking indicators, welcome slideshow, confirm modal, Code View modal (snippet generation for TypeScript/Python/curl with dynamic settings snapshot, sentinel stripping, and bash heredoc escaping).
+- **UI Shell** (`public/index.html` + `styles.css`) — Static markup and dark-themed styling. Split-pane layout (chat 30% / trace 70%), floating chat input, settings modal with 4 collapsible sections, CSS Grid-based trace with dynamic column count, unified top-nav pill cluster (Code View, About, Settings).
+- **Vendored Prism** (`public/vendor/prism/`) — Self-hosted Prism 1.30.0 with five language components (JSON, TypeScript, JavaScript, Python, Bash) and a custom dark theme (`prism-theme.css`) tuned to the app palette. Loaded via plain `<link>` and `<script>` tags — no build step.
 
 ## Data Model
 No persistent data model. All state is ephemeral:
@@ -62,7 +63,7 @@ No persistent data model. All state is ephemeral:
 - **Rate Limit Map** (server memory) — `Map<IP, {start, count}>`, cleared on a timer interval. The only server-side state.
 
 ## Major Technical Steps
-These reflect the phases the project went through to reach v1.4.0:
+These reflect the phases the project went through to reach v1.5.0:
 
 1. **Single-branch chat with trace** — Express server + vanilla JS frontend, `/api/chat` endpoint, step-by-step trace rendering from `usage.iterations[]` with token counts and cost estimates.
 2. **Step timeline visualization** — Map content blocks to iterations, per-step cards with model/tokens/cost, collapsible turn groups with always-visible summary tiles.
@@ -73,6 +74,7 @@ These reflect the phases the project went through to reach v1.4.0:
 7. **UI polish** — Floating chat input, thinking indicators with elapsed timer, centered header layout, welcome slideshow, confirm modal, security hardening.
 8. **Conversation totals dashboard** — Cumulative per-branch totals pinned at top of trace pane, leader indicators, mode locking.
 9. **Advisor tool API catch-up (v1.4.0)** — Moved model selectors from header into a dedicated Config Models panel above the chat. Added Effort dropdown (`output_config.effort`), `max_uses` cap on the advisor tool definition, advisor call counter in the trace, caching dropdown (Off / 5m / 1h) replacing the old checkbox, human-readable advisor error codes, `advisor_redacted_result` handling, system prompt presets (Recommended / Precise / Custom), and extended config locking to all four selectors (Mode + Executor + Advisor + Effort). About modal gained a tagline and a `lastUpdated` field sourced from `package.json` via `/api/version`.
+10. **Code View & syntax highlighting (v1.5.0)** — Added self-hosted Prism 1.30.0 with custom dark theme. Applied syntax highlighting + per-block copy buttons to the Full I/O viewer JSON. Added a global "Wrap code" toggle in the Trace pane header. Introduced the `</>` Code View modal that generates dynamic TypeScript/Python/curl snippets from the current configuration with a self-documenting settings comment block, prompt-as-variable pattern, sentinel stripping for the system prompt, and an "Original prompt" toggle. Redesigned the top-nav as a unified pill cluster with SVG icons.
 
 ## Tools & Services
 | Tool / Service | Purpose |
@@ -81,6 +83,7 @@ These reflect the phases the project went through to reach v1.4.0:
 | **Express 4.x** | HTTP framework |
 | **Anthropic SDK** (`@anthropic-ai/sdk`) | Advisor tool calls, baseline calls, Anthropic judge calls |
 | **OpenAI API** (via `fetch`) | Optional GPT judge calls — no SDK dependency |
+| **Prism 1.30.0** (self-hosted) | Syntax highlighting for the Full I/O viewer and Code View snippets |
 | **Railway** | Hosting with automatic HTTPS termination |
 | **GitHub** | Source code repository |
 
@@ -90,8 +93,10 @@ These reflect the phases the project went through to reach v1.4.0:
 - **Per-model API feature support drift** — The `effort` parameter is supported on Sonnet 4.6 and Opus 4.6 but not Haiku 4.5. The app hardcodes this distinction via an `executor.startsWith("claude-haiku")` check. If Anthropic adds effort support to Haiku or ships new executor models, this check needs updating.
 - **No streaming** — The advisor sub-inference doesn't support streaming, so there's a visible pause during advisor calls. Users see a thinking indicator but no progressive output.
 - **In-memory rate limiting** — Rate limit state resets on server restart. Acceptable for a learning tool, not for a production service.
-- **Single-file frontend** — `app.js` is ~65K, `styles.css` is ~55K after v1.4.0. Manageable for the current scope but would benefit from modularization if the app grows significantly.
+- **Single-file frontend** — `app.js` is ~80K, `styles.css` is ~60K after v1.5.0. Manageable for the current scope but would benefit from modularization if the app grows significantly.
 - **`advisor_redacted_result` handling is untested with real data** — No advisor model currently returns encrypted results. The display path was built defensively; if Anthropic ships a model that uses encryption, the rendering should be verified end-to-end.
+- **Code View TypeScript and Python snippets are structurally validated but not end-to-end tested** — Only the curl snippet was run against the real Anthropic API. TS/Python match the SDK docs but haven't been executed in a live project. A future version should add a small smoke-test harness (or ship this as an explicit caveat in Code View copy) to catch SDK signature drift.
+- **Prism pinned at 1.30.0** — Version pin is tracked in `vendor/prism/README.md` and in the top-of-file comment of `prism-theme.css`. Prism major-version upgrades would require re-validating token class names against the custom theme.
 
 ## Milestones
 
@@ -103,8 +108,9 @@ These reflect the phases the project went through to reach v1.4.0:
 | v1.2.1 | UI polish, Railway deployment | Done (2026-04-11) |
 | v1.3.0 | Conversation totals dashboard, mode locking, tile cleanup | Done (2026-04-13) |
 | v1.4.0 | Advisor tool API catch-up — Config Models panel, Effort, max_uses, caching dropdown, system prompt presets, error code handling, About modal tagline + last-updated | Done (2026-04-16) |
+| v1.5.0 | Code View & Syntax Highlighting — Code View modal (TS/Python/curl), self-hosted Prism, Full I/O viewer highlighting + copy buttons, global Wrap toggle, Original prompt toggle, top-nav pill-cluster redesign | Done (2026-04-17) |
 
-Future milestones will be added as Anthropic evolves the advisor tool API. Backlog items currently captured (see `docs/build/feature-backlog.md`): F33 Code View popup, F34 Prism JSON syntax highlighting.
+Future milestones will be added as Anthropic evolves the advisor tool API. No items currently in the top-level backlog.
 
 ## Environment Setup
 1. **Prerequisites:** Node.js 18+ installed

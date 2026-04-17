@@ -4,12 +4,43 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.5.0 — Code View & Syntax Highlighting (2026-04-17)](#v150--code-view--syntax-highlighting---2026-04-17)
 - [v1.4.0 — Advisor Tool API Catch-up (2026-04-16)](#v140--advisor-tool-api-catch-up---2026-04-16)
 - [v1.3.0 — Conversation Totals Dashboard (2026-04-13)](#v130--conversation-totals-dashboard---2026-04-13)
 - [v1.2.1 — UI Polish & Railway Deployment (Patch) (2026-04-11)](#v121--ui-polish--railway-deployment-patch---2026-04-11)
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.5.0 — Code View & Syntax Highlighting - 2026-04-17
+
+## Overview
+Adds a **Code View** popup that shows the exact Anthropic API call for the user's current configuration in TypeScript, Python, and curl — generated dynamically from whatever Executor/Advisor/Effort/max_uses/caching/max_tokens/system-prompt settings are active. Bundled with **Prism-based syntax highlighting** applied everywhere code is displayed (Code View snippets + Full I/O viewer JSON) and per-block **copy buttons** on the Full I/O viewer.
+
+## Key Features
+- **Code View modal.** New `</>` icon in the top-nav cluster opens a centered modal with three tabs (TypeScript / Python / curl). The snippet is **fully dynamic** — reflects every current setting with omission rules applied (effort omitted on Haiku, `max_uses`/`caching`/`system` omitted when off/empty). Every snippet starts with a self-documenting comment block listing all current settings, including the ones intentionally omitted and why. The user prompt is hoisted to a `prompt` / `PROMPT` variable at the top of each snippet for obvious editing. Beta header `advisor-tool-2026-03-01` always included.
+- **Prism syntax highlighting.** Self-hosted Prism 1.30.0 in `/public/vendor/prism/` (no CDN — keeps the same-origin security posture from v1.2.0 intact). Custom dark theme tuned to the app palette. Applied to both the Code View snippets and the Full I/O viewer JSON blocks.
+- **Copy buttons.** Reusable `makeCopyButton()` helper with "✓ Copied" success state and "Copy failed" error state. One header button in the Code View that copies the active tab. Per-section buttons on the Full I/O viewer (request and response JSON) for every branch, every turn.
+- **Global "Wrap code" toggle in the Trace pane.** New checkbox next to "Sync panes" — affects every Full I/O JSON block in the trace pane simultaneously. Default on (wraps long lines), off falls back to horizontal scroll. Wrap uses `overflow-wrap: anywhere` so long unbreakable strings (like JSON-stringified system prompts) break correctly.
+- **"Original prompt" toggle in Code View.** Second checkbox in the tab-row actions. Disabled until the user sends a prompt in the current conversation, unchecked by default when enabled. When ticked, substitutes the user's most recent prompt for `"prompt here"` across all three snippets with proper escaping per language (JS/Python via `JSON.stringify`; curl via a new `bashDoubleQuote()` helper). New Chat resets the checkbox.
+- **Top-nav redesigned as a pill cluster.** The `</>` + ⓘ + ⚙ buttons now live inside a single rounded container with hairline dividers. All three use consistent SVG outline icons (replacing the previous mix of Unicode chars and mono text). Code View button tinted accent-blue to differentiate it. Selected from a 4-variation mockup during design.
+
+## Enhancements
+- **Sentinel stripping in the Code View.** The `<!-- advisor:only -->` / `<!-- /advisor:only -->` markers are playground-specific — they're inert HTML comments to Anthropic but noise in user-facing code. The Code View strips just the sentinel tags before embedding the system prompt in snippets, preserving all content inside AND outside the tags. Users who copy the code get Anthropic's recommended prompt content without the playground's internal plumbing.
+- **Tab keyboard navigation.** Per WAI-ARIA tablist pattern: Left/Right arrow keys cycle between Code View tabs, Home/End jump to first/last. Existing Tab/Shift+Tab focus trap unchanged.
+- **Consistent modal height across tabs.** The Code View body has a fixed height (`min(620px, 100vh - 240px)`) so the modal doesn't resize when you switch between languages with different snippet lengths.
+- **Horizontal scroll hoisted to the panel.** When wrap is off, the scrollbar appears at the bottom of the visible panel viewport (not at the bottom of the pre, which would be hidden below the scroll area on long snippets). `min-width: max-content` on the pre + `overflow: auto` on the panel gives a single always-visible scrollbar.
+- **Single-source `ADVISOR_BETA` constant** on the frontend. The beta header string (`"advisor-tool-2026-03-01"`) now lives as a top-level constant in `app.js`, used by the Code View snippet generators. Future beta-header bumps are a one-line change on the frontend.
+
+## Bug Fixes
+None (v1.5.0 is additive).
+
+## Other Notes
+- **New dependency:** Prism 1.30.0, self-hosted at `/public/vendor/prism/`. Includes `prism.min.js`, five language components (JSON, TypeScript, JavaScript, Python, Bash), a custom dark theme (`prism-theme.css`), and a `README.md` documenting the pinned version and source URLs for future regeneration.
+- **End-to-end validation.** The generated curl snippet was tested against the real Anthropic API with both a trivial prompt (no advisor call — correct per the Recommended preset's timing guidance) and a substantive prompt (full advisor-tool flow fired with `advisor_message` in the iterations array).
+- **TypeScript and Python snippets** were structurally validated against the Anthropic SDK docs but not executed end-to-end. Any SDK signature drift will surface as a runtime error on the user's side.
 
 ---
 
