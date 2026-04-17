@@ -274,6 +274,7 @@ const welcomeVersionEl = $("#welcome-version");
 const headerVersionEl = $("#header-version");
 const settingsVersionEl = $("#settings-version");
 const aboutVersionEl = $("#about-version");
+const aboutLastUpdatedEl = $("#about-last-updated");
 const aboutModalEl = $("#about-modal");
 const toggleAboutBtn = $("#toggle-about");
 
@@ -286,6 +287,9 @@ fetch("/api/version")
     if (headerVersionEl) headerVersionEl.textContent = v;
     if (settingsVersionEl) settingsVersionEl.textContent = v;
     if (aboutVersionEl) aboutVersionEl.textContent = v;
+    if (aboutLastUpdatedEl && d.lastUpdated) {
+      aboutLastUpdatedEl.textContent = d.lastUpdated;
+    }
   })
   .catch(() => {});
 
@@ -1869,8 +1873,35 @@ function showWelcomeSlide(idx) {
     welcomeCurrentSlide === WELCOME_SLIDE_COUNT - 1 ? "Done" : "Next";
 }
 
+// On the final welcome slide, show only the "Next steps" that still need
+// action based on the user's current settings. Steps already done are hidden
+// so returning users aren't told to set up things they already have.
+function updateWelcomeNextSteps() {
+  const apikeyStep = document.getElementById("welcome-step-apikey");
+  const evalStep = document.getElementById("welcome-step-eval");
+  const promptsNumEl = document.getElementById("welcome-step-prompts-num");
+  if (!apikeyStep || !evalStep || !promptsNumEl) return;
+
+  const needsApiKey = !apiKeyEl.value.trim();
+  // Eval is considered configured if: Anthropic provider (reuses the Anthropic
+  // key — covered by step 1), OR OpenAI provider with a non-empty OpenAI key.
+  const provider = evalProviderEl.value;
+  const needsEvalSetup = provider === "openai" && !openaiKeyEl.value.trim();
+
+  apikeyStep.style.display = needsApiKey ? "" : "none";
+  evalStep.style.display = needsEvalSetup ? "" : "none";
+
+  // Renumber step 3 (the prompts list) to reflect which earlier steps are
+  // visible. If no steps are shown before it, it's just "Try one of these".
+  let promptsNum = 1;
+  if (needsApiKey) promptsNum++;
+  if (needsEvalSetup) promptsNum++;
+  promptsNumEl.textContent = promptsNum;
+}
+
 function openWelcome() {
   welcomeDontshowEl.checked = false;
+  updateWelcomeNextSteps();
   showWelcomeSlide(0);
   welcomeModalEl.classList.add("open");
 }

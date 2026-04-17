@@ -69,17 +69,17 @@ Major feature for at-a-glance branch comparison across whole conversations.
 | F22 | Mode locking | Lock mode dropdown after first message for fair comparisons | High | 🟢 Completed |
 | F23 | Tile cleanup | Reduced per-turn tiles from 5 to 4 (removed cache_r/cache_w, added time) | Low | 🟢 Completed |
 
-## v1.4.0 — Advisor Tool API Catch-up - 🔴 Not Started
+## v1.4.0 — Advisor Tool API Catch-up - 🟢 Completed
 Bring the app up to date with the latest Anthropic advisor tool API capabilities and add new configuration options for cost control and experimentation.
 
 | ID  | Feature                 | Description                              | Priority | Status |
 |-----|-------------------------|------------------------------------------|----------|--------|
-| F24 | Model config panel | Move executor/advisor/mode dropdowns from header into config panel above chat | High | 🔴 Not Started |
-| F25 | Effort settings | New dropdown next to executor (low/medium/high/max) via `output_config.effort` | High | 🔴 Not Started |
-| F26 | `max_uses` setting | New number input in Settings → Chat & Advisor to cap advisor calls per request | Medium | 🔴 Not Started |
-| F27 | Advisor call counter | Show "Call N of M" in trace when multiple advisor calls occur | Medium | 🔴 Not Started |
-| F28 | Caching dropdown | Replace checkbox with Off / 5m / 1h dropdown | Medium | 🔴 Not Started |
-| F29 | `advisor_redacted_result` handling | Gracefully display encrypted advisor responses in trace | Low | 🔴 Not Started |
-| F30 | Error codes display | Render advisor error codes clearly in trace step cards | Medium | 🔴 Not Started |
-| F31 | System prompt presets | Dropdown: Recommended / Precise / Custom | High | 🔴 Not Started |
+| F24 | Model config panel | Move executor/advisor/mode dropdowns from header into config panel above chat | High | 🟢 Completed |
+| F25 | Effort settings | New dropdown next to executor (low/medium/high/max) via `output_config.effort` | High | 🟢 Completed |
+| F26 | `max_uses` setting | New number input in Settings → Chat & Advisor to cap advisor calls per request | Medium | 🟢 Completed |
+| F27 | Advisor call counter | Show "Call N of M" in trace when multiple advisor calls occur | Medium | 🟢 Completed |
+| F28 | Caching dropdown | Replace checkbox with Off / 5m / 1h dropdown | Medium | 🟢 Completed |
+| F29 | `advisor_redacted_result` handling | Gracefully display encrypted advisor responses in trace | Low | 🟢 Completed |
+| F30 | Error codes display | Render advisor error codes clearly in trace step cards | Medium | 🟢 Completed |
+| F31 | System prompt presets | Dropdown: Recommended / Precise / Custom | High | 🟢 Completed |
 | F32 | About box link fix | Change CHANGELOG.md reference to release-notes.md | Low | 🟢 Completed |

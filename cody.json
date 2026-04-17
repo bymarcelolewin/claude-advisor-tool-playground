@@ -2,7 +2,7 @@
   "cody-product-builder": {
     "name": "Claude Advisor Tool Playground",
     "description": "A web app for experimenting with Anthropic's advisor tool beta — trace, compare, and evaluate executor/advisor interactions",
-    "version": "1.3.0",
+    "version": "1.4.0",
     "phase": "build",
     "projectPath": "docs",
     "releaseNotesPath": "{{projectRoot}}",

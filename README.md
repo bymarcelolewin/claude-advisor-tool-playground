@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.3.0-blue)
+![Version](https://img.shields.io/badge/version-1.4.0-blue)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
 
@@ -99,13 +99,16 @@ Each conversation turn is wrapped in a collapsible container on both sides so yo
 
 ### Pick your models
 
-Three dropdowns sit at the top of the window:
+A **Config Models** panel sits above the chat on the left, with four controls:
 
 - **Executor model** — `claude-haiku-4-5`, `claude-sonnet-4-6`, or `claude-opus-4-6`. This is the model doing the main work.
+- **Effort** — `Low` / `Medium` / `High` (default) / `Max`. Controls thinking depth and overall token spend on the executor via `output_config.effort`. Disabled when Haiku is the executor (Haiku doesn't support effort). Applied equally to all branches in compare mode so comparisons stay fair.
 - **Advisor model** — `claude-opus-4-6` (the only valid advisor per the beta spec).
 - **Mode** — single-branch or one of three compare modes (see below).
 
 The canonical pair is Sonnet executor + Opus advisor. That's the whole point of the feature: let the cheap model do most of the work and only call the expensive one when it needs strategic input.
+
+**All four selectors lock after your first message** in a conversation — changing them mid-chat would make turn comparisons unfair (different models or effort levels producing different turn histories). Click the **＋ New Chat** button to unlock them and start fresh.
 
 ### Compare mode
 
@@ -223,9 +226,31 @@ The default system prompt shipped in settings contains advisor-specific instruct
 
 If you add your own content — like `"You are a Go concurrency expert"` — put it **outside** the sentinels and all branches will receive it equally.
 
+### Presets
+
+Settings → Chat & Advisor now exposes three system prompt presets:
+
+- **Recommended** (default) — Anthropic's timing + advice-treatment blocks, verbatim from the advisor tool docs.
+- **Precise** — Recommended + a conciseness instruction at the top. Anthropic reports this cuts total advisor output tokens by roughly 35-45% without changing call frequency.
+- **Custom** — pre-populated with just the sentinel tags so you don't forget them. Write your own advisor-only instructions between the tags; anything outside goes to all branches.
+
+Editing the textarea auto-switches the dropdown to **Custom**. Your custom content is preserved separately, so switching to Recommended/Precise and back to Custom restores your own work.
+
+### Caching
+
 One subtlety worth knowing: when the executor calls `advisor()`, the server forwards the full executor transcript (including the system prompt) to the advisor sub-inference. So the advisor reads your system prompt too. That's why the default prompt mixes instructions for both audiences — some lines constrain the advisor's output format, others tell the executor when to call.
 
-A large system prompt gets re-sent on every advisor call, which adds input tokens. Turn on **Advisor caching** in settings to absorb that cost after the first call (it breaks even at around 3 advisor calls per conversation).
+A large system prompt gets re-sent on every advisor call, which adds input tokens. The **Advisor caching** dropdown in settings has three options:
+
+- **Off** (default) — no caching on the advisor's transcript.
+- **5 min** — `{type: "ephemeral", ttl: "5m"}`. Good for typical conversations and short agent loops.
+- **1 hour** — `{type: "ephemeral", ttl: "1h"}`. For long-running agent loops where advisor calls are spread over tens of minutes.
+
+Caching breaks even at around 3 advisor calls per conversation.
+
+### Capping advisor calls per request
+
+The **Max advisor calls per request** input (Settings → Chat & Advisor) maps to `max_uses` on the advisor tool definition. Leave empty for unlimited. When the cap is reached, further advisor calls return an `advisor_tool_result_error` with `error_code: "max_uses_exceeded"` — the request itself succeeds and the executor continues without further advice. The trace pane shows these errors in red with a human-readable message.
 
 ---
 

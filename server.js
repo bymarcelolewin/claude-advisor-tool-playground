@@ -7,7 +7,9 @@ import { readFileSync } from "fs";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const ADVISOR_BETA = "advisor-tool-2026-03-01";
-const PKG_VERSION = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8")).version;
+const PKG_JSON = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8"));
+const PKG_VERSION = PKG_JSON.version;
+const PKG_LAST_UPDATED = PKG_JSON.lastUpdated || null;
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
@@ -147,7 +149,7 @@ function branchesForMode(mode) {
   }
 }
 
-app.get("/api/version", (_req, res) => res.json({ version: PKG_VERSION }));
+app.get("/api/version", (_req, res) => res.json({ version: PKG_VERSION, lastUpdated: PKG_LAST_UPDATED }));
 
 app.post("/api/chat", async (req, res) => {
   try {

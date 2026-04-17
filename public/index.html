@@ -305,10 +305,12 @@
             <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
           </svg>
           <h2 class="about-title">Claude Advisor Tool Playground <span class="about-version" id="about-version"></span></h2>
+          <p class="about-tagline">A Playground for the <a href="https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool" target="_blank" rel="noopener">Claude Advisor Tool</a></p>
           <p class="about-line">Created by <a href="https://www.ibuildwith.ai" target="_blank" rel="noopener">iBuildWith.ai</a></p>
           <p class="about-line">Want to run it locally? Get it on <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground" target="_blank" rel="noopener">GitHub</a></p>
           <p class="about-line">Check out the <a href="https://github.com/bymarcelolewin/claude-advisor-tool-playground/blob/main/release-notes.md" target="_blank" rel="noopener">release notes</a></p>
           <p class="about-line">Contact <a href="mailto:marcelo@ibuildwith.ai">Marcelo Lewin</a></p>
+          <p class="about-line about-meta">Last updated: <span id="about-last-updated">—</span></p>
         </div>
         <div class="about-footer">
           <button type="button" class="btn-primary" data-about-close>OK</button>
@@ -353,7 +355,7 @@
           <section class="welcome-slide" data-slide="2">
             <h2>How to use it</h2>
             <ol class="welcome-list welcome-list-numbered">
-              <li><strong>Pick your models</strong> from the dropdowns at the top. The canonical pair is Sonnet executor + Opus advisor — it's the whole point of the feature.</li>
+              <li><strong>Pick your models</strong> from the <em>Config Models</em> panel above the chat. The canonical pair is Sonnet executor + Opus advisor — it's the whole point of the feature.</li>
               <li><strong>Pick a Mode.</strong> Start with "Advisor only" for normal use. Switch to one of the compare modes to run the same prompt against baselines in parallel.</li>
               <li><strong>Send a prompt</strong> from the chat pane. The left side shows the replies. The right side shows every API step that produced them.</li>
               <li><strong>Click any turn's "Evaluate" button</strong> in the trace pane (compare mode only) to run an LLM-as-judge scoring pass — opt-in per turn, so nothing extra runs automatically.</li>
@@ -364,20 +366,33 @@
           <!-- Slide 4: Next steps -->
           <section class="welcome-slide" data-slide="3">
             <h2>Next steps</h2>
-            <p class="welcome-lead">Before your first prompt, you'll need to add your Anthropic API key.</p>
 
-            <div class="welcome-cta">
-              <button type="button" class="btn-primary welcome-cta-btn" id="welcome-open-settings">
-                Open Settings &amp; add API key
-              </button>
-              <p class="welcome-cta-hint">This closes the welcome and opens the Settings modal. Your key is stored in your browser's localStorage and never leaves your machine.</p>
+            <!-- Step 1: Anthropic API key (shown only if missing) -->
+            <div class="welcome-step" id="welcome-step-apikey">
+              <p class="welcome-step-label"><span class="welcome-step-num">1</span> Set up your Anthropic API key</p>
+              <div class="welcome-cta">
+                <button type="button" class="btn-primary welcome-cta-btn" id="welcome-open-settings">
+                  Open Settings &amp; add API key
+                </button>
+                <p class="welcome-cta-hint">This closes the welcome and opens the Settings modal. Your key is stored in your browser's localStorage and never leaves your machine.</p>
+              </div>
             </div>
 
-            <p class="welcome-body"><strong>Then try one of these prompts</strong> (both trigger the advisor):</p>
-            <ul class="welcome-list welcome-list-small">
-              <li><em>"Write a Python function to parse ISO 8601 duration strings, with 6 test cases. Explain your approach first."</em></li>
-              <li><em>"Design a URL shortener with custom aliases, per-link expiration, and click analytics. Describe schema, API, and trade-offs."</em></li>
-            </ul>
+            <!-- Step 2: Evaluator setup (shown only if using OpenAI without a key) -->
+            <div class="welcome-step" id="welcome-step-eval">
+              <p class="welcome-step-label"><span class="welcome-step-num">2</span> Pick a model for quality evaluation</p>
+              <p class="welcome-body welcome-step-body">Choose either <strong>Anthropic</strong> (uses your existing Anthropic key) or <strong>OpenAI</strong> (requires a separate OpenAI API key). You can edit this anytime in Settings → Quality Evaluation.</p>
+            </div>
+
+            <!-- Step 3: Try a prompt (always shown) -->
+            <div class="welcome-step" id="welcome-step-prompts">
+              <p class="welcome-step-label"><span class="welcome-step-num" id="welcome-step-prompts-num">3</span> Try one of these prompts <span class="welcome-step-sublabel">(both trigger the advisor)</span></p>
+              <ul class="welcome-list welcome-list-small">
+                <li><em>"Write a Python function to parse ISO 8601 duration strings, with 6 test cases. Explain your approach first."</em></li>
+                <li><em>"Design a URL shortener with custom aliases, per-link expiration, and click analytics. Describe schema, API, and trade-offs."</em></li>
+              </ul>
+            </div>
+
             <p class="welcome-footnote">You can reopen this welcome anytime from the Notices &amp; Disclaimers section in Settings.</p>
           </section>
         </div>

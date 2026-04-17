@@ -100,15 +100,17 @@ Bump version numbers, update release notes, write retrospective, final test.
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 7.1 | Bump package.json version | Update `package.json` version from "1.3.0" to "1.4.0". | All prior phases | 🔴 Not Started | AGENT |
-| 7.2 | Add lastUpdated field to package.json | Add a `"lastUpdated": "YYYY-MM-DD"` field to `package.json` with today's date. This field will be the source of truth for "last updated" across the app. | 7.1 | 🔴 Not Started | AGENT |
-| 7.3 | Expose lastUpdated from server | Update `/api/version` endpoint in `server.js` to also return `lastUpdated` from package.json alongside the version. | 7.2 | 🔴 Not Started | AGENT |
-| 7.4 | Add tagline + last updated to About modal | In `public/index.html` About modal, add below the title: "A Playground for the [Claude Advisor Tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool)" (with the link opening in a new tab). Also add a "Last updated: YYYY-MM-DD" line that reads the value from `/api/version`. Update `public/app.js` to fetch and populate the lastUpdated field. | 7.3 | 🔴 Not Started | AGENT |
-| 7.5 | Update README version badge | Update version badge in `README.md` to v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
-| 7.6 | Add release notes entry | Add v1.4.0 entry to `release-notes.md` at the project root with all changes. Update the TOC. | 7.1 | 🔴 Not Started | AGENT |
-| 7.7 | Update cody.json | Update `cody.json` in project root: set `version` to "1.4.0" and `updatedAt` to today's date. | 7.1 | 🔴 Not Started | AGENT |
-| 7.8 | Update feature backlog | Mark v1.4.0 status as 🟢 Completed in `docs/build/feature-backlog.md`. Mark all v1.4.0 features as 🟢 Completed. | 7.1 | 🔴 Not Started | AGENT |
-| 7.9 | Update welcome slideshow | In `public/index.html`, update Slide 3 step 1 to reference the new config panel location instead of "at the top" (where the dropdowns used to be in the header). Review all other welcome content for accuracy against v1.4.0. | 7.1 | 🔴 Not Started | AGENT |
-| 7.10 | Write retrospective | Create `docs/build/v1.4.0/retrospective.md` from the template. Fill in what went well, what could have gone better, lessons learned, action items. | 7.1 | 🔴 Not Started | AGENT |
-| 7.11 | End-to-end test | USER performs full end-to-end test: all features work together, no regressions in existing functionality. About box shows correct version, last updated date, and tagline with working link. | 7.1-7.10 | 🔴 Not Started | USER |
-| 7.12 | Final commit | USER commits version bump + release notes + retrospective + welcome update + About modal changes to git. | 7.11 | 🔴 Not Started | USER |
+| 7.1 | Bump package.json version | Updated `package.json` version from "1.3.0" to "1.4.0". | All prior phases | 🟢 Completed | AGENT |
+| 7.2 | Add lastUpdated field to package.json | Added `"lastUpdated": "2026-04-16"` field to `package.json`. | 7.1 | 🟢 Completed | AGENT |
+| 7.3 | Expose lastUpdated from server | Updated `/api/version` endpoint to return `{ version, lastUpdated }` from `package.json`. | 7.2 | 🟢 Completed | AGENT |
+| 7.4 | Add tagline + last updated to About modal | Added tagline: "A Playground for the [Claude Advisor Tool](link)" with the link opening in a new tab. Added "Last updated: YYYY-MM-DD" as a muted meta line at the bottom of the About card. Wired `/api/version` fetch to populate the date. Added `.about-tagline` and `.about-meta` styles. | 7.3 | 🟢 Completed | AGENT |
+| 7.5 | Update README version badge | Bumped version badge to 1.4.0. | 7.1 | 🟢 Completed | AGENT |
+| 7.5b | Update README content for v1.4.0 | Updated "Pick your models" section to describe the new Config Models panel + Effort dropdown + locking behavior. Added new subsections under "System prompts": Presets (Recommended/Precise/Custom), expanded Caching dropdown description (Off/5m/1h), and new "Capping advisor calls per request" section documenting `max_uses`. | 7.5 | 🟢 Completed | AGENT |
+| 7.6 | Add release notes entry | Added comprehensive v1.4.0 entry to `release-notes.md` with Overview, Key Features, Enhancements, Bug Fixes, Other Notes sections. Updated TOC. | 7.1 | 🟢 Completed | AGENT |
+| 7.7 | Update cody.json | Updated `version` to "1.4.0". (`updatedAt` was already 2026-04-16.) | 7.1 | 🟢 Completed | AGENT |
+| 7.8 | Update feature backlog | Marked v1.4.0 status as 🟢 Completed. Marked all v1.4.0 features (F24–F32) as 🟢 Completed. | 7.1 | 🟢 Completed | AGENT |
+| 7.9 | Update welcome slideshow | Updated Slide 3 step 1 from "from the dropdowns at the top" to "from the *Config Models* panel above the chat". | 7.1 | 🟢 Completed | AGENT |
+| 7.10 | Write retrospective | Created `docs/build/v1.4.0/retrospective.md` covering summary, what went well, what could have gone better, lessons learned, and action items (incl. backlog items F33, F34 for follow-up). | 7.1 | 🟢 Completed | AGENT |
+| 7.11 | Adaptive welcome slide | Restructured welcome Slide 4 into three numbered steps (API key / Eval setup / Try a prompt). Added `updateWelcomeNextSteps()` that hides already-configured steps and renumbers the remaining ones on each welcome open. | 7.9 | 🟢 Completed | AGENT |
+| 7.12 | End-to-end test | USER tested: all features work together, About box shows correct version/last updated/tagline with working link, welcome slide adapts based on current config (confirmed by user: "adaptive welcome works great"). Server restart confirmed to pick up `/api/version` changes. | 7.1-7.11 | 🟢 Completed | USER |
+| 7.13 | Final commit | USER commits version bump + release notes + retrospective + welcome update + About modal changes to git. | 7.12 | 🟢 Completed | USER |
