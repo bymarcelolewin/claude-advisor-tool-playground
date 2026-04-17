@@ -288,6 +288,8 @@ When you want to understand exactly why one branch's numbers differ from another
 
 ## Code View — grab the API call for your current config
 
+![Code View modal showing the TypeScript snippet generated from the current playground configuration](images/code-view.png)
+
 Click the `</>` icon in the top-nav to open the **Code View** modal. It generates the exact Anthropic API call for whatever Executor / Advisor / Effort / max_uses / caching / system-prompt you have active right now, in three languages: **TypeScript**, **Python**, and **curl**. Copy-paste the snippet into your own project, add your own prompt, set your API key, and you have a working advisor-tool call that matches what you were just experimenting with in the playground.
 
 Every snippet starts with a self-documenting comment block listing all current settings — including ones that are intentionally omitted from the call (like `Effort: n/a (Haiku does not support effort — omitted from call)` or `Caching: off (omitted from call)`) with the reason. Tick **Original prompt** to substitute your most recent chat prompt for the `"prompt here"` placeholder.
