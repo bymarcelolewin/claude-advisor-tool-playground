@@ -15,7 +15,7 @@ This document defines how the product will be built and when.
 | Environment Setup | Prerequisites or steps to get the app running in a local/dev environment. |
 
 ## Overview
-This plan covers the Claude Advisor Tool Playground — a web app for experimenting with Anthropic's advisor tool beta. The app is feature-complete at v1.3.0 and deployed live on Railway. This plan documents the architecture and implementation as built, serving as a reference for future maintenance or updates if Anthropic changes the advisor tool API.
+This plan covers the Claude Advisor Tool Playground — a web app for experimenting with Anthropic's advisor tool beta. The app is currently at v1.4.0 and deployed live on Railway. This plan documents the architecture and implementation as built, serving as a reference for future maintenance or updates as Anthropic evolves the advisor tool API.
 
 ## Architecture
 The app follows a simple **client-server monolith** pattern:
@@ -62,7 +62,7 @@ No persistent data model. All state is ephemeral:
 - **Rate Limit Map** (server memory) — `Map<IP, {start, count}>`, cleared on a timer interval. The only server-side state.
 
 ## Major Technical Steps
-These reflect the phases the project went through to reach v1.3.0:
+These reflect the phases the project went through to reach v1.4.0:
 
 1. **Single-branch chat with trace** — Express server + vanilla JS frontend, `/api/chat` endpoint, step-by-step trace rendering from `usage.iterations[]` with token counts and cost estimates.
 2. **Step timeline visualization** — Map content blocks to iterations, per-step cards with model/tokens/cost, collapsible turn groups with always-visible summary tiles.
@@ -72,6 +72,7 @@ These reflect the phases the project went through to reach v1.3.0:
 6. **Settings modal** — Four collapsible sections, API key management, configurable system prompt and judge prompt, advisor caching toggle.
 7. **UI polish** — Floating chat input, thinking indicators with elapsed timer, centered header layout, welcome slideshow, confirm modal, security hardening.
 8. **Conversation totals dashboard** — Cumulative per-branch totals pinned at top of trace pane, leader indicators, mode locking.
+9. **Advisor tool API catch-up (v1.4.0)** — Moved model selectors from header into a dedicated Config Models panel above the chat. Added Effort dropdown (`output_config.effort`), `max_uses` cap on the advisor tool definition, advisor call counter in the trace, caching dropdown (Off / 5m / 1h) replacing the old checkbox, human-readable advisor error codes, `advisor_redacted_result` handling, system prompt presets (Recommended / Precise / Custom), and extended config locking to all four selectors (Mode + Executor + Advisor + Effort). About modal gained a tagline and a `lastUpdated` field sourced from `package.json` via `/api/version`.
 
 ## Tools & Services
 | Tool / Service | Purpose |
@@ -84,14 +85,15 @@ These reflect the phases the project went through to reach v1.3.0:
 | **GitHub** | Source code repository |
 
 ## Risks & Unknowns
-- **Advisor tool beta stability** — The app depends on `advisor-tool-2026-03-01`. If Anthropic changes the beta header, response format, or deprecates the feature, the app will need updates.
+- **Advisor tool beta stability** — The app depends on `advisor-tool-2026-03-01`. If Anthropic changes the beta header, response format, or deprecates the feature, the app will need updates. The `claude-advisor-tool-updates.md` reference file in `docs/reference/` tracks every API addition seen in Anthropic's docs and whether we've implemented it, making future catch-up versions easier to scope.
 - **Hardcoded model names and pricing** — Model names in `server.js` (`EVAL_MODEL_ANTHROPIC`, `EVAL_MODEL_OPENAI`) and pricing in `public/app.js` (`PRICES`) must be manually updated when models turn over. No automated discovery mechanism.
+- **Per-model API feature support drift** — The `effort` parameter is supported on Sonnet 4.6 and Opus 4.6 but not Haiku 4.5. The app hardcodes this distinction via an `executor.startsWith("claude-haiku")` check. If Anthropic adds effort support to Haiku or ships new executor models, this check needs updating.
 - **No streaming** — The advisor sub-inference doesn't support streaming, so there's a visible pause during advisor calls. Users see a thinking indicator but no progressive output.
 - **In-memory rate limiting** — Rate limit state resets on server restart. Acceptable for a learning tool, not for a production service.
-- **Single-file frontend** — `app.js` is 61K, `styles.css` is 50K. Manageable for the current scope but would benefit from modularization if the app grows significantly.
+- **Single-file frontend** — `app.js` is ~65K, `styles.css` is ~55K after v1.4.0. Manageable for the current scope but would benefit from modularization if the app grows significantly.
+- **`advisor_redacted_result` handling is untested with real data** — No advisor model currently returns encrypted results. The display path was built defensively; if Anthropic ships a model that uses encryption, the rendering should be verified end-to-end.
 
 ## Milestones
-All milestones are complete:
 
 | Version | Milestone | Status |
 |---------|-----------|--------|
@@ -100,8 +102,9 @@ All milestones are complete:
 | v1.2.0 | Security hardening — CORS, rate limiting, HTTPS, headers, XSS audit | Done (2026-04-11) |
 | v1.2.1 | UI polish, Railway deployment | Done (2026-04-11) |
 | v1.3.0 | Conversation totals dashboard, mode locking, tile cleanup | Done (2026-04-13) |
+| v1.4.0 | Advisor tool API catch-up — Config Models panel, Effort, max_uses, caching dropdown, system prompt presets, error code handling, About modal tagline + last-updated | Done (2026-04-16) |
 
-Future milestones will be added if/when Anthropic updates the advisor tool API.
+Future milestones will be added as Anthropic evolves the advisor tool API. Backlog items currently captured (see `docs/build/feature-backlog.md`): F33 Code View popup, F34 Prism JSON syntax highlighting.
 
 ## Environment Setup
 1. **Prerequisites:** Node.js 18+ installed

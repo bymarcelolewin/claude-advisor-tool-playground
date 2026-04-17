@@ -26,16 +26,21 @@ The Claude Advisor Tool Playground is a web application that makes Anthropic's a
 The primary user is the builder themselves — a builder (not a traditional developer) learning by building. Secondary users are anyone who wants to see what's happening behind the scenes of the advisor tool: developers evaluating whether to adopt it, AI practitioners benchmarking cost/quality, or curious users who want more than what the documentation provides.
 
 ## Key Features
-All features below are implemented and shipped as of v1.3.0:
+All features below are implemented and shipped as of v1.4.0:
 
-- **Chat with advisor tool tracing** — Send prompts through executor + advisor, see a step-by-step timeline of every API interaction with model names, token counts (input, output, cache read, cache write), cost estimates, and raw content per step.
+- **Chat with advisor tool tracing** — Send prompts through executor + advisor, see a step-by-step timeline of every API interaction with model names, token counts (input, output, cache read, cache write on advisor steps), cost estimates, and raw content per step.
 - **Compare modes** — Run the same prompt through up to 3 execution paths in parallel (advisor, executor-model-solo, advisor-model-solo) with delta pills showing cost/latency/token differences per turn.
-- **Conversation totals dashboard** — Cumulative per-branch totals (input, output, cost, time) pinned at the top of the trace pane with color-coded values and leader indicators.
+- **Model Config panel** — Dedicated configuration panel above the chat with four controls: Executor model, Effort level, Advisor model, and Mode. All four selectors lock together once the first message is sent to keep turn-to-turn comparisons fair.
+- **Effort settings** — Dropdown (Low / Medium / High / Max) that maps to `output_config.effort` on the API request. Applied equally to all branches in compare mode. Disabled for Haiku 4.5 (shows "n/a") since Haiku doesn't support effort.
+- **`max_uses` cap** — Settings input that caps advisor calls per API request via `max_uses` on the tool definition. Advisor call counter in the trace shows "Call N of M" when a cap is set.
+- **Advisor caching** — Dropdown (Off / 5m / 1h) that enables prompt caching on the advisor's own transcript across calls within a single request.
+- **Conversation totals dashboard** — Cumulative per-branch totals (input, output, cost, time) pinned at the top of the trace pane with color-coded values, leader indicators, and a yellow-accented Effort indicator.
 - **LLM-as-judge quality evaluation** — Opt-in per-turn scoring using Claude Opus or GPT as judge, with 2-pass position-bias mitigation, blinded candidates, 4-dimension rubric (correctness, completeness, clarity, depth), and judge-disagreement detection.
-- **Full I/O viewer** — Inspect the exact JSON request and response for any branch on any turn (system prompt, tools array, message history, content blocks, usage).
-- **Mode locking** — Mode dropdown locks after the first message to ensure fair branch comparison.
-- **Welcome slideshow** — First-launch walkthrough introducing the advisor strategy and the playground.
-- **Settings modal** — Four collapsible sections: Anthropic API, Chat & Advisor (max tokens, caching, system prompt), Quality Evaluation (provider, judge prompt), Notices & Disclaimers.
+- **Full I/O viewer** — Inspect the exact JSON request and response for any branch on any turn (system prompt, tools array, message history, content blocks, usage, `output_config`).
+- **Error code and redacted result handling** — Six documented advisor error codes (`max_uses_exceeded`, `too_many_requests`, `overloaded`, `prompt_too_long`, `execution_time_exceeded`, `unavailable`) render with red styling and human-readable messages. `advisor_redacted_result` content renders a clear "encrypted — not visible to client" notice.
+- **System prompt presets** — Dropdown with Recommended (Anthropic's timing + advice-treatment blocks), Precise (Recommended + conciseness instruction, ~35-45% fewer advisor output tokens), and Custom (user-written, pre-populated with sentinel tags). Custom content is preserved separately so switching presets doesn't clobber user work.
+- **Adaptive welcome slideshow** — First-launch walkthrough introducing the advisor strategy. The "Next steps" slide hides steps that are already configured (API key, evaluator) and renumbers the remaining ones.
+- **Settings modal** — Four collapsible sections: Anthropic API, Chat & Advisor (max tokens, caching, max_uses, system prompt + preset), Quality Evaluation (provider, judge prompt), Notices & Disclaimers.
 - **Security hardening** — Same-origin CORS, per-IP rate limiting, HTTPS/HSTS behind proxy, security headers, XSS protection, 2MB payload cap.
 - **Stateless architecture** — Server stores nothing. Conversation history and API keys live in the browser only.
 
@@ -50,7 +55,13 @@ All features below are implemented and shipped as of v1.3.0:
 - Streaming responses (advisor sub-inference doesn't support streaming)
 - Additional tool types beyond the advisor tool
 - Mobile-optimized layout
-- New feature development unless Anthropic updates the advisor tool API
+- Executor-side prompt caching (`cache_control` breakpoints on message content) — generic Anthropic caching that's unrelated to teaching the advisor tool specifically
+- `pause_turn` support, batch processing integration, `clear_thinking` configuration — all valid advisor tool capabilities, but tangential to the playground's learning purpose
+
+## Nice-to-Have Features (backlog)
+Captured ideas for future versions (see `docs/build/feature-backlog.md`):
+- **Code View popup (F33)** — Top-nav `</>` button that opens a modal with TypeScript and Python code snippets showing the exact API call a user can drop into their own code.
+- **Prism JSON syntax highlighting (F34)** — Color-coded JSON in the Full I/O viewer for readability.
 
 ## User Stories
 - As a **builder**, I want to send a prompt and see exactly what happens at each step (executor → advisor → executor continues) so I can understand the advisor tool's mechanics.
