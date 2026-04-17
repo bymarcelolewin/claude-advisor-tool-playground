@@ -385,6 +385,12 @@ button:disabled { opacity: 0.5; cursor: not-allowed; }
   resize: vertical;
 }
 
+/* Space the system prompt preset dropdown away from the textarea that sits
+   directly beneath it in the same .setting container. */
+#system-prompt-preset {
+  margin-bottom: 8px;
+}
+
 .checkbox-row {
   flex-direction: row !important;
   align-items: center;

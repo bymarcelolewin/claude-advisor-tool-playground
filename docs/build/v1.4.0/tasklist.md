@@ -86,12 +86,13 @@ Add Recommended / Precise / Custom preset dropdown above the system prompt texta
 
 | ID  | Task             | Description                             | Dependencies | Status | Assigned To |
 |-----|------------------|-----------------------------------------|--------------|--------|-------------|
-| 6.1 | Define preset constants | In `public/app.js`, define three constants: `SYSTEM_PROMPT_RECOMMENDED` (timing guidance + advice treatment from Anthropic docs, wrapped in sentinels), `SYSTEM_PROMPT_PRECISE` (Recommended + conciseness instruction), `SYSTEM_PROMPT_CUSTOM` (empty string). | None | 🔴 Not Started | AGENT |
-| 6.2 | Add preset dropdown markup | Add a `<select>` dropdown above the system prompt textarea in Settings → Chat & Advisor section of `public/index.html`. Options: Recommended (default), Precise, Custom. | None | 🔴 Not Started | AGENT |
-| 6.3 | Wire preset dropdown | In `public/app.js`, populate textarea with preset content when preset is selected. Persist selected preset to localStorage. Default to Recommended. | 6.1, 6.2 | 🔴 Not Started | AGENT |
-| 6.4 | Auto-switch to Custom on manual edit | Listen for manual edits to the textarea. If content diverges from the selected preset's content, switch dropdown to "Custom" automatically. | 6.3 | 🔴 Not Started | AGENT |
-| 6.5 | Test phase 6 | USER tests: all three presets load correctly, sentinels present in Recommended/Precise, Custom starts blank, auto-switch to Custom works on manual edit. | 6.1-6.4 | 🔴 Not Started | USER |
-| 6.6 | Commit phase 6 | USER commits phase 6 to git. | 6.5 | 🔴 Not Started | USER |
+| 6.1 | Define preset constants | Defined `SYSTEM_PROMPT_RECOMMENDED` (timing + advice treatment blocks from Anthropic docs), `SYSTEM_PROMPT_PRECISE` (Recommended + conciseness instruction at top), and the `SYSTEM_PROMPT_PRESETS` map. Added `detectSystemPromptPreset()` helper to derive active preset from text content. | None | 🟢 Completed | AGENT |
+| 6.2 | Add preset dropdown markup | Added `<select id="system-prompt-preset">` above the textarea with options: Recommended, Precise, Custom. Updated the setting-hint to explain each preset. | None | 🟢 Completed | AGENT |
+| 6.3 | Wire preset dropdown | On dropdown change, populate textarea with preset content and save. On load, derive the dropdown value from the current textarea content via `detectSystemPromptPreset()`. New users default to Recommended. | 6.1, 6.2 | 🟢 Completed | AGENT |
+| 6.4 | Auto-switch to Custom on manual edit | Added `input` listener on textarea that re-derives the preset dropdown. Any divergence from Recommended or Precise (even whitespace) flips the dropdown to Custom. | 6.3 | 🟢 Completed | AGENT |
+| 6.5 | Preserve custom content across preset swaps | Custom preset starts with a sentinel-tag skeleton. Added `customSystemPromptText` state + `customSystemPrompt` localStorage field that tracks the user's custom content separately from the active textarea value. Switching to Precise/Recommended and back to Custom now restores the user's previous work. | 6.4 | 🟢 Completed | AGENT |
+| 6.6 | Test phase 6 | USER tested: all three presets load correctly, sentinels present in Recommended/Precise, Custom starts with sentinel skeleton, auto-switch to Custom works on manual edit, custom content survives preset round-trips. | 6.1-6.5 | 🟢 Completed | USER |
+| 6.7 | Commit phase 6 | USER commits phase 6 to git. | 6.6 | 🟢 Completed | USER |
 
 ## Phase 7: Version Bump & Finalize
 

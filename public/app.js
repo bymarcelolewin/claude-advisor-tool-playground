@@ -42,7 +42,29 @@ OUTPUT FORMAT: return ONLY a JSON object, no markdown fences, no prose outside t
 Allowed values for "winner": "A", "B", "C", or "tie".
 Allowed values for "confidence": "low", "medium", or "high".`;
 
-const SUGGESTED_SYSTEM_PROMPT = `<!-- advisor:only -->
+// System prompt presets — sourced from Anthropic's official advisor tool
+// docs. "Recommended" is the timing + advice-treatment blocks. "Precise" adds
+// the conciseness instruction at the top (Anthropic reports this cuts total
+// advisor output tokens 35-45% without changing call frequency). "Custom"
+// leaves it blank for the user to write their own.
+const SYSTEM_PROMPT_RECOMMENDED = `<!-- advisor:only -->
+You have access to an \`advisor\` tool backed by a stronger reviewer model. It takes NO parameters — when you call advisor(), your entire conversation history is automatically forwarded. They see the task, every tool call you've made, every result you've seen.
+
+Call advisor BEFORE substantive work — before writing, before committing to an interpretation, before building on an assumption. If the task requires orientation first (finding files, fetching a source, seeing what's there), do that, then call advisor. Orientation is not substantive work. Writing, editing, and declaring an answer are.
+
+Also call advisor:
+- When you believe the task is complete. BEFORE this call, make your deliverable durable.
+- When stuck — errors recurring, approach not converging, results that don't fit.
+- When considering a change of approach.
+
+On tasks longer than a few steps, call advisor at least once before committing to an approach and once before declaring done. On short reactive tasks where the next action is dictated by tool output you just read, you don't need to keep calling.
+
+Give the advice serious weight. If you follow a step and it fails empirically, or you have primary-source evidence that contradicts a specific claim, adapt. A passing self-test is not evidence the advice is wrong — it's evidence your test doesn't check what the advice is checking.
+
+If you've already retrieved data pointing one way and the advisor points another: don't silently switch. Surface the conflict in one more advisor call.
+<!-- /advisor:only -->`;
+
+const SYSTEM_PROMPT_PRECISE = `<!-- advisor:only -->
 The advisor should respond in under 100 words and use enumerated steps, not explanations.
 
 You have access to an \`advisor\` tool backed by a stronger reviewer model. It takes NO parameters — when you call advisor(), your entire conversation history is automatically forwarded. They see the task, every tool call you've made, every result you've seen.
@@ -60,6 +82,28 @@ Give the advice serious weight. If you follow a step and it fails empirically, o
 
 If you've already retrieved data pointing one way and the advisor points another: don't silently switch. Surface the conflict in one more advisor call.
 <!-- /advisor:only -->`;
+
+// Custom preset starts with just the sentinel tags so the user has a clear
+// place to write their own advisor-only instructions. Anything outside the
+// tags will be sent to all branches (including baselines).
+const SYSTEM_PROMPT_CUSTOM_SKELETON = `<!-- advisor:only -->
+
+<!-- /advisor:only -->`;
+
+const SYSTEM_PROMPT_PRESETS = {
+  recommended: SYSTEM_PROMPT_RECOMMENDED,
+  precise: SYSTEM_PROMPT_PRECISE,
+  custom: SYSTEM_PROMPT_CUSTOM_SKELETON,
+};
+
+// Derive the active preset from the current prompt text. If the text matches
+// Recommended or Precise verbatim, we show that preset. Any divergence —
+// including whitespace edits — falls back to "custom".
+function detectSystemPromptPreset(text) {
+  if (text === SYSTEM_PROMPT_RECOMMENDED) return "recommended";
+  if (text === SYSTEM_PROMPT_PRECISE) return "precise";
+  return "custom";
+}
 
 // ============================================================================
 // Pricing (rough public list prices, per 1M tokens)
@@ -209,6 +253,7 @@ const inputEl = $("#user-input");
 const sendBtn = $("#send");
 const resetBtn = $("#reset");
 const systemEl = $("#system-prompt");
+const systemPromptPresetEl = $("#system-prompt-preset");
 const executorEl = $("#executor");
 const advisorEl = $("#advisor");
 const modeEl = $("#mode");
@@ -269,6 +314,11 @@ function loadSettings() {
   } catch { return {}; }
 }
 
+// Track the user's custom system prompt separately so switching between
+// presets doesn't clobber it. Updated only when the user edits the textarea
+// while on the "custom" preset.
+let customSystemPromptText = "";
+
 function saveSettings() {
   // "na" is a display state (shown when Haiku is selected). Persist the user's
   // real selection instead so switching to Sonnet/Opus restores the right value.
@@ -283,6 +333,7 @@ function saveSettings() {
     maxUses: parseMaxUses(maxUsesEl.value),
     effort: effortToSave,
     systemPrompt: systemEl.value,
+    customSystemPrompt: customSystemPromptText,
     evalProvider: evalProviderEl.value,
     openaiKey: openaiKeyEl.value,
     judgePrompt: judgePromptEl.value,
@@ -308,17 +359,54 @@ function applySettings(s) {
   if (s.advisorCaching) advisorCachingEl.value = s.advisorCaching;
   if (s.maxUses != null && s.maxUses !== "") maxUsesEl.value = s.maxUses;
   if (s.effort) effortEl.value = s.effort;
-  systemEl.value = s.systemPrompt || SUGGESTED_SYSTEM_PROMPT;
+  systemEl.value = s.systemPrompt || SYSTEM_PROMPT_RECOMMENDED;
+  if (s.customSystemPrompt) customSystemPromptText = s.customSystemPrompt;
   if (s.evalProvider) evalProviderEl.value = s.evalProvider;
   if (s.openaiKey != null) openaiKeyEl.value = s.openaiKey;
   judgePromptEl.value = s.judgePrompt || DEFAULT_JUDGE_PROMPT;
 }
 
 applySettings(loadSettings());
-if (!systemEl.value) systemEl.value = SUGGESTED_SYSTEM_PROMPT;
+if (!systemEl.value) systemEl.value = SYSTEM_PROMPT_RECOMMENDED;
 if (!judgePromptEl.value) judgePromptEl.value = DEFAULT_JUDGE_PROMPT;
+// Derive the preset dropdown from whatever text is currently in the textarea.
+// Handles both first-load (defaults to Recommended) and returning users (if
+// their saved text matches a preset, the dropdown reflects it).
+systemPromptPresetEl.value = detectSystemPromptPreset(systemEl.value);
+// If the user's current prompt is "custom" and we don't have a separate saved
+// custom copy yet (e.g., first run of this version), seed it from the textarea.
+if (systemPromptPresetEl.value === "custom" && !customSystemPromptText) {
+  customSystemPromptText = systemEl.value;
+}
 updateOpenAIKeyVisibility();
 updateTraceColumnCount();
+
+// When the user picks a preset, populate the textarea with that preset's text.
+// For "custom", restore their previously saved custom content (or the skeleton
+// if they've never customized). Recommended/Precise always load their canonical
+// text since they're meant to be Anthropic's exact recommendations.
+systemPromptPresetEl.addEventListener("change", () => {
+  const preset = systemPromptPresetEl.value;
+  if (preset === "custom") {
+    systemEl.value = customSystemPromptText || SYSTEM_PROMPT_CUSTOM_SKELETON;
+  } else {
+    systemEl.value = SYSTEM_PROMPT_PRESETS[preset] ?? "";
+  }
+  saveSettings();
+  flashSavedIndicator();
+});
+
+// When the user edits the textarea, re-derive the preset. Editing a preset's
+// text flips the dropdown to "custom" automatically — signals that they've
+// diverged from the canonical preset content. When on custom, we also mirror
+// the text into customSystemPromptText so switching to a preset and back
+// restores the user's work.
+systemEl.addEventListener("input", () => {
+  systemPromptPresetEl.value = detectSystemPromptPreset(systemEl.value);
+  if (systemPromptPresetEl.value === "custom") {
+    customSystemPromptText = systemEl.value;
+  }
+});
 
 function updateOpenAIKeyVisibility() {
   if (evalProviderEl.value === "openai") {

@@ -95,10 +95,15 @@
             </div>
 
             <div class="setting full">
-              <label for="system-prompt">
+              <label for="system-prompt-preset">
                 System prompt
-                <span class="setting-hint">Prefilled with the advisor timing + treatment blocks from the docs. Edit freely. Content inside <code>&lt;!-- advisor:only --&gt;</code> sentinels is stripped from baseline branches.</span>
+                <span class="setting-hint">Choose a preset or write your own. <strong>Recommended</strong> = Anthropic's timing + advice-treatment blocks. <strong>Precise</strong> = Recommended + conciseness instruction (Anthropic reports ~35-45% fewer advisor output tokens). <strong>Custom</strong> = write your own. Content inside <code>&lt;!-- advisor:only --&gt;</code> sentinels is stripped from baseline branches. Editing the textarea switches to Custom automatically.</span>
               </label>
+              <select id="system-prompt-preset">
+                <option value="recommended">Recommended</option>
+                <option value="precise">Precise</option>
+                <option value="custom">Custom</option>
+              </select>
               <textarea id="system-prompt" rows="8"></textarea>
             </div>
           </div>
