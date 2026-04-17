@@ -321,19 +321,44 @@ document.addEventListener("keydown", (e) => {
 });
 
 // ============================================================================
-// Code View modal — </> button in top-nav. Phase 4 wires up the shell only;
-// snippet generation lands in Phase 5.
+// Code View modal — </> button in top-nav.
+// Generates the exact Anthropic API call for the user's current configuration
+// in three languages (TypeScript / Python / curl) with per-tab copy buttons.
+// Snippets are regenerated each time the modal opens.
 // ============================================================================
+
+// Beta header opted into for the advisor tool. Single source of truth on the
+// frontend — bump here when Anthropic ships a new beta version.
+const ADVISOR_BETA = "advisor-tool-2026-03-01";
+
+const SYSTEM_PROMPT_PRESET_LABELS = {
+  recommended: "Recommended preset",
+  precise: "Precise preset",
+  custom: "Custom preset",
+};
+
 const codeViewModalEl = $("#code-view-modal");
 const toggleCodeViewBtn = $("#toggle-code-view");
 const codeViewTabs = codeViewModalEl ? codeViewModalEl.querySelectorAll(".code-view-tab") : [];
 const codeViewPanels = codeViewModalEl ? codeViewModalEl.querySelectorAll(".code-view-panel") : [];
+const codeViewPillRailEl = $("#code-view-pill-rail");
+const codeViewWrapEl = $("#code-view-wrap");
+const codeViewCopySlotEl = $("#code-view-copy-slot");
+const codeViewUsePromptEl = $("#code-view-use-prompt");
+const codeViewUsePromptLabelEl = $("#code-view-use-prompt-label");
+
+// Holds the most recently generated snippets, keyed by tab id ("ts"|"py"|"curl").
+// Re-populated each time the modal opens. The header Copy button reads from
+// this so it always copies the active tab's content.
+const codeViewSnippets = { ts: "", py: "", curl: "" };
+let codeViewActiveTab = "ts";
 
 // Tracks the element that had focus before the modal opened so we can restore
 // it on close (accessibility — keyboard users land back where they were).
 let codeViewLastFocus = null;
 
 function setCodeViewActiveTab(tabId) {
+  codeViewActiveTab = tabId;
   codeViewTabs.forEach((t) => {
     const isActive = t.dataset.tab === tabId;
     t.classList.toggle("active", isActive);
@@ -348,21 +373,85 @@ function setCodeViewActiveTab(tabId) {
   });
 }
 
+// Apply the wrap state to all three Code View panels. Called on toggle and on
+// every modal open so the rendered panels match the checkbox state.
+function applyCodeViewWrapState() {
+  const noWrap = !(codeViewWrapEl && codeViewWrapEl.checked);
+  codeViewPanels.forEach((panel) => {
+    panel.querySelectorAll('pre[class*="language-"]').forEach((pre) => {
+      pre.classList.toggle("io-nowrap", noWrap);
+    });
+  });
+}
+
+if (codeViewWrapEl) {
+  codeViewWrapEl.addEventListener("change", applyCodeViewWrapState);
+}
+
+// Pulls the most recent user message from the advisor branch's history
+// (advisor is always active regardless of Mode). Returns null if no prompt
+// has been sent yet this conversation.
+function getLatestUserPrompt() {
+  const hist = branchHistories.advisor || [];
+  for (let i = hist.length - 1; i >= 0; i--) {
+    const msg = hist[i];
+    if (msg && msg.role === "user" && typeof msg.content === "string") {
+      return msg.content;
+    }
+  }
+  return null;
+}
+
+// Enables / disables the "Original prompt" checkbox based on whether the
+// user has sent a prompt yet. Called on every modal open so the state
+// reflects the current conversation (including after a New Chat reset).
+function refreshCodeViewUsePromptState() {
+  if (!codeViewUsePromptEl) return;
+  const hasPrompt = getLatestUserPrompt() != null;
+  codeViewUsePromptEl.disabled = !hasPrompt;
+  if (!hasPrompt) codeViewUsePromptEl.checked = false;
+  if (codeViewUsePromptLabelEl) {
+    codeViewUsePromptLabelEl.title = hasPrompt
+      ? 'Replace "prompt here" with your most recent prompt'
+      : "Send a prompt first to enable this";
+  }
+}
+
+// Re-populate snippets when the checkbox flips so the change is visible
+// immediately without reopening the modal.
+if (codeViewUsePromptEl) {
+  codeViewUsePromptEl.addEventListener("change", () => {
+    populateCodeView();
+  });
+}
+
+// Single header Copy button. Created on first modal open instead of at module
+// load: makeCopyButton() reads COPY_ICON_SVG, which is a `const` declared
+// further down in this file and is therefore in the temporal dead zone until
+// then. Lazy creation avoids the TDZ error and runs at most once per session.
+let codeViewCopyBtnReady = false;
+function ensureCodeViewCopyBtn() {
+  if (codeViewCopyBtnReady || !codeViewCopySlotEl) return;
+  const copyBtn = makeCopyButton(() => codeViewSnippets[codeViewActiveTab] || "", {
+    ariaLabel: "Copy active snippet",
+  });
+  codeViewCopySlotEl.appendChild(copyBtn);
+  codeViewCopyBtnReady = true;
+}
+
 function openCodeView() {
   if (!codeViewModalEl) return;
   codeViewLastFocus = document.activeElement;
   codeViewModalEl.classList.add("open");
   // Default to the TypeScript tab on every open.
   setCodeViewActiveTab("ts");
-  // Phase 4: panels are placeholders. Phase 5 will populate them with real snippets.
-  codeViewPanels.forEach((p) => {
-    if (!p.dataset.placeholderShown) {
-      p.innerHTML = '<pre style="margin:0;padding:24px;color:var(--muted);font-family:var(--mono);font-size:12px;">' +
-        '// Phase 4 placeholder — snippet generation lands in Phase 5.\n// Tab: ' + p.dataset.panel +
-        '</pre>';
-      p.dataset.placeholderShown = "1";
-    }
-  });
+  // Lazy-init the header Copy button (see ensureCodeViewCopyBtn for why).
+  ensureCodeViewCopyBtn();
+  // Enable/disable the "Original prompt" checkbox based on whether a prompt
+  // has been sent yet in this conversation.
+  refreshCodeViewUsePromptState();
+  // Snapshot current settings and render the pill rail + all three snippets fresh.
+  populateCodeView();
   // Move focus into the modal — start on the active tab so keyboard users can
   // navigate immediately with arrow keys (when wired up in Phase 6).
   const activeTab = codeViewModalEl.querySelector(".code-view-tab.active");
@@ -387,6 +476,23 @@ if (codeViewModalEl) {
   });
   codeViewTabs.forEach((t) => {
     t.addEventListener("click", () => setCodeViewActiveTab(t.dataset.tab));
+    // Arrow-key navigation within the tablist per WAI-ARIA tablist pattern:
+    // Left/Right cycle between tabs, Home/End jump to first/last.
+    t.addEventListener("keydown", (e) => {
+      const tabs = Array.from(codeViewTabs);
+      const idx = tabs.indexOf(t);
+      let nextIdx = null;
+      if (e.key === "ArrowRight") nextIdx = (idx + 1) % tabs.length;
+      else if (e.key === "ArrowLeft") nextIdx = (idx - 1 + tabs.length) % tabs.length;
+      else if (e.key === "Home") nextIdx = 0;
+      else if (e.key === "End") nextIdx = tabs.length - 1;
+      if (nextIdx != null) {
+        e.preventDefault();
+        const nextTab = tabs[nextIdx];
+        setCodeViewActiveTab(nextTab.dataset.tab);
+        nextTab.focus();
+      }
+    });
   });
 }
 
@@ -416,6 +522,295 @@ document.addEventListener("keydown", (e) => {
     }
   }
 });
+
+// ----- Code View: settings snapshot ---------------------------------------
+// Reads the current state of every input that affects the API call. Returns
+// a normalized object with omission rules already applied (effort=null on
+// Haiku, maxUses=null when unset/0, caching=null when "off", systemPrompt=null
+// when empty/whitespace) so the snippet generators can be straightforward.
+
+// Strip the playground-only <!-- advisor:only --> sentinels from the system
+// prompt before embedding it in a snippet. The sentinels are inert HTML
+// comments to Anthropic, but they're noise in user-facing code — they only
+// matter to this app's compare-mode `stripAdvisorOnly()` server logic.
+// Content inside AND outside the sentinels is preserved; only the markers go.
+function stripAdvisorSentinels(text) {
+  return text.replace(/<!--\s*\/?advisor:only\s*-->/g, "").trim();
+}
+
+function snapshotCodeViewSettings() {
+  const executor = executorEl.value;
+  const advisor = advisorEl.value;
+  const isHaiku = executor.startsWith("claude-haiku");
+  const effortRaw = effortEl.value;
+  const effort = isHaiku ? null : (effortRaw === "na" ? null : effortRaw);
+  const maxUses = parseMaxUses(maxUsesEl.value);
+  const advisorCachingRaw = advisorCachingEl.value;
+  const caching = (advisorCachingRaw === "5m" || advisorCachingRaw === "1h") ? advisorCachingRaw : null;
+  const maxTokens = parseInt(maxTokensEl.value, 10) || 8192;
+  const systemPromptRaw = systemEl.value || "";
+  // Preset detection runs on the raw textarea content (sentinels intact) so
+  // the pill rail label still reflects the user's chosen preset accurately.
+  const systemPromptPreset = detectSystemPromptPreset(systemPromptRaw);
+  // The snippet embeds the cleaned text. If only sentinels were present, the
+  // result is empty after stripping — treat that as "no system prompt".
+  const systemPromptCleaned = stripAdvisorSentinels(systemPromptRaw);
+  const systemPrompt = systemPromptCleaned ? systemPromptCleaned : null;
+  // Original prompt: null means "use the 'prompt here' placeholder".
+  // Populated only when the user has ticked the checkbox AND there is a
+  // prompt in history to use.
+  const useOriginal = !!(codeViewUsePromptEl && codeViewUsePromptEl.checked);
+  const originalPrompt = useOriginal ? getLatestUserPrompt() : null;
+  return {
+    executor, advisor, isHaiku, effort, maxUses, caching, maxTokens,
+    systemPrompt, systemPromptPreset, originalPrompt,
+  };
+}
+
+// ----- Code View: pill rail rendering --------------------------------------
+function renderCodeViewPillRail(snap) {
+  if (!codeViewPillRailEl) return;
+  codeViewPillRailEl.innerHTML = "";
+  const pills = [];
+  pills.push({ k: "executor", v: snap.executor, cls: "exec" });
+  pills.push({ k: "advisor", v: snap.advisor, cls: "adv" });
+  if (snap.effort) pills.push({ k: "effort", v: snap.effort });
+  if (snap.maxUses != null) pills.push({ k: "max_uses", v: String(snap.maxUses) });
+  if (snap.caching) pills.push({ k: "caching", v: snap.caching });
+  pills.push({ k: "max_tokens", v: String(snap.maxTokens) });
+  pills.push({ k: "system", v: SYSTEM_PROMPT_PRESET_LABELS[snap.systemPromptPreset] || "Custom preset" });
+
+  for (const p of pills) {
+    const el = document.createElement("span");
+    el.className = "pill" + (p.cls ? " " + p.cls : "");
+    const k = document.createElement("span");
+    k.className = "k";
+    k.textContent = p.k + ":";
+    el.appendChild(k);
+    el.appendChild(document.createTextNode(" " + p.v));
+    codeViewPillRailEl.appendChild(el);
+  }
+}
+
+// ----- Code View: settings comment block -----------------------------------
+// Builds the rows used at the top of every snippet — including settings that
+// are intentionally omitted from the call, with the reason. Self-documenting.
+function buildSettingsCommentRows(snap) {
+  const rows = [];
+  rows.push(["Executor", snap.executor]);
+  rows.push(["Advisor", snap.advisor]);
+  if (snap.isHaiku) {
+    rows.push(["Effort", "n/a (Haiku does not support effort — omitted from call)"]);
+  } else {
+    rows.push(["Effort", snap.effort || "(not set)"]);
+  }
+  rows.push(["max_uses", snap.maxUses == null ? "(not set — unlimited)" : String(snap.maxUses)]);
+  rows.push(["Caching", snap.caching || "off (omitted from call)"]);
+  rows.push(["max_tokens", String(snap.maxTokens)]);
+  let sysLabel = SYSTEM_PROMPT_PRESET_LABELS[snap.systemPromptPreset] || "Custom preset";
+  if (!snap.systemPrompt) sysLabel += " (empty — system parameter omitted from call)";
+  rows.push(["System", sysLabel]);
+  return rows;
+}
+
+// Renders the settings rows in the language's native comment syntax.
+function formatSettingsComment(lang, rows) {
+  const maxKey = rows.reduce((m, r) => Math.max(m, r[0].length), 0);
+  const padded = rows.map(([k, v]) => k + ":" + " ".repeat(maxKey - k.length + 2) + v);
+  if (lang === "ts") {
+    let s = "/**\n * Generated by Claude Advisor Tool Playground v1.5.0\n *\n * Current settings:\n";
+    for (const line of padded) s += " *   " + line + "\n";
+    s += " */";
+    return s;
+  }
+  // Python and Bash both use # comments
+  let s = "# Generated by Claude Advisor Tool Playground v1.5.0\n#\n# Current settings:\n";
+  for (const line of padded) s += "#   " + line + "\n";
+  return s.replace(/\n$/, "");
+}
+
+// ----- Code View: TypeScript snippet ---------------------------------------
+function generateTypeScriptSnippet(snap) {
+  const comment = formatSettingsComment("ts", buildSettingsCommentRows(snap));
+  const lines = [];
+  const tool = [];
+  tool.push(`        type: "advisor_20260301",`);
+  tool.push(`        name: "advisor",`);
+  tool.push(`        model: ${JSON.stringify(snap.advisor)},`);
+  if (snap.maxUses != null) tool.push(`        max_uses: ${snap.maxUses},`);
+  if (snap.caching) tool.push(`        caching: { type: "ephemeral", ttl: ${JSON.stringify(snap.caching)} },`);
+
+  lines.push(`    model: ${JSON.stringify(snap.executor)},`);
+  lines.push(`    max_tokens: ${snap.maxTokens},`);
+  if (snap.systemPrompt) lines.push(`    system: ${JSON.stringify(snap.systemPrompt)},`);
+  if (snap.effort) lines.push(`    output_config: { effort: ${JSON.stringify(snap.effort)} },`);
+  lines.push(`    tools: [`);
+  lines.push(`      {`);
+  lines.push(...tool);
+  lines.push(`      },`);
+  lines.push(`    ],`);
+  lines.push(`    messages: [`);
+  lines.push(`      { role: "user", content: prompt },`);
+  lines.push(`    ],`);
+
+  const promptLiteral = JSON.stringify(snap.originalPrompt ?? "prompt here");
+  return `${comment}
+import Anthropic from "@anthropic-ai/sdk";
+
+const client = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+});
+
+// Edit this to change what you send to the model.
+const prompt = ${promptLiteral};
+
+const response = await client.beta.messages.create(
+  {
+${lines.join("\n")}
+  },
+  { betas: [${JSON.stringify(ADVISOR_BETA)}] }
+);
+
+console.log(response);
+`;
+}
+
+// ----- Code View: Python snippet -------------------------------------------
+function generatePythonSnippet(snap) {
+  const comment = formatSettingsComment("py", buildSettingsCommentRows(snap));
+  const lines = [];
+  const tool = [];
+  tool.push(`            "type": "advisor_20260301",`);
+  tool.push(`            "name": "advisor",`);
+  tool.push(`            "model": ${JSON.stringify(snap.advisor)},`);
+  if (snap.maxUses != null) tool.push(`            "max_uses": ${snap.maxUses},`);
+  if (snap.caching) tool.push(`            "caching": {"type": "ephemeral", "ttl": ${JSON.stringify(snap.caching)}},`);
+
+  lines.push(`    model=${JSON.stringify(snap.executor)},`);
+  lines.push(`    max_tokens=${snap.maxTokens},`);
+  if (snap.systemPrompt) lines.push(`    system=${JSON.stringify(snap.systemPrompt)},`);
+  if (snap.effort) lines.push(`    output_config={"effort": ${JSON.stringify(snap.effort)}},`);
+  lines.push(`    tools=[`);
+  lines.push(`        {`);
+  lines.push(...tool);
+  lines.push(`        }`);
+  lines.push(`    ],`);
+  lines.push(`    messages=[`);
+  lines.push(`        {"role": "user", "content": prompt},`);
+  lines.push(`    ],`);
+  lines.push(`    betas=[${JSON.stringify(ADVISOR_BETA)}],`);
+
+  const promptLiteral = JSON.stringify(snap.originalPrompt ?? "prompt here");
+  return `${comment}
+import os
+from anthropic import Anthropic
+
+client = Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+# Edit this to change what you send to the model.
+prompt = ${promptLiteral}
+
+response = client.beta.messages.create(
+${lines.join("\n")}
+)
+
+print(response)
+`;
+}
+
+// ----- Code View: curl snippet ---------------------------------------------
+// Bash heredoc context: an unquoted <<EOF expands $vars and `commands`. The
+// JSON body might contain $ or ` (rare, but possible inside the system prompt),
+// so we escape backslash, dollar, and backtick before injecting. The user
+// prompt is hoisted to a $PROMPT shell variable; we leave one literal $PROMPT
+// in the JSON body (post-escape) so the heredoc expands it at runtime.
+function escapeForBashHeredoc(s) {
+  return s.replace(/\\/g, "\\\\").replace(/\$/g, "\\$").replace(/`/g, "\\`");
+}
+
+// Wraps a string in bash double quotes with proper escaping for characters
+// that are special inside double quotes: backslash, double quote, dollar,
+// backtick. Safe for use as `PROMPT=<result>`.
+function bashDoubleQuote(s) {
+  return '"' + s.replace(/\\/g, "\\\\").replace(/"/g, '\\"').replace(/\$/g, "\\$").replace(/`/g, "\\`") + '"';
+}
+
+function generateCurlSnippet(snap) {
+  const comment = formatSettingsComment("bash", buildSettingsCommentRows(snap));
+  const advisorTool = {
+    type: "advisor_20260301",
+    name: "advisor",
+    model: snap.advisor,
+  };
+  if (snap.maxUses != null) advisorTool.max_uses = snap.maxUses;
+  if (snap.caching) advisorTool.caching = { type: "ephemeral", ttl: snap.caching };
+
+  const body = {
+    model: snap.executor,
+    max_tokens: snap.maxTokens,
+  };
+  if (snap.systemPrompt) body.system = snap.systemPrompt;
+  if (snap.effort) body.output_config = { effort: snap.effort };
+  body.tools = [advisorTool];
+  // Placeholder swapped post-escape so the literal $PROMPT survives into the
+  // heredoc and gets expanded by the shell at runtime.
+  const PROMPT_TOKEN = "__CATP_PROMPT_PLACEHOLDER__";
+  body.messages = [{ role: "user", content: PROMPT_TOKEN }];
+
+  const jsonBody = JSON.stringify(body, null, 2);
+  const escaped = escapeForBashHeredoc(jsonBody).replace(`"${PROMPT_TOKEN}"`, '"$PROMPT"');
+
+  const promptAssignment = bashDoubleQuote(snap.originalPrompt ?? "prompt here");
+  return `${comment}
+
+# Edit this to change what you send to the model.
+PROMPT=${promptAssignment}
+
+curl https://api.anthropic.com/v1/messages \\
+  --header "x-api-key: $ANTHROPIC_API_KEY" \\
+  --header "anthropic-version: 2023-06-01" \\
+  --header "anthropic-beta: ${ADVISOR_BETA}" \\
+  --header "content-type: application/json" \\
+  --data @- <<EOF
+${escaped}
+EOF
+`;
+}
+
+// ----- Code View: populate panels ------------------------------------------
+function populateCodeView() {
+  if (!codeViewPanels || codeViewPanels.length === 0) return;
+  const snap = snapshotCodeViewSettings();
+  renderCodeViewPillRail(snap);
+
+  const langByTab = { ts: "typescript", py: "python", curl: "bash" };
+  codeViewSnippets.ts = generateTypeScriptSnippet(snap);
+  codeViewSnippets.py = generatePythonSnippet(snap);
+  codeViewSnippets.curl = generateCurlSnippet(snap);
+
+  codeViewPanels.forEach((panel) => {
+    const tab = panel.dataset.panel;
+    const lang = langByTab[tab];
+    const text = codeViewSnippets[tab];
+    if (!lang || text == null) return;
+
+    panel.innerHTML = "";
+    const pre = document.createElement("pre");
+    pre.className = "language-" + lang;
+    const code = document.createElement("code");
+    code.className = "language-" + lang;
+    code.textContent = text;
+    pre.appendChild(code);
+    panel.appendChild(pre);
+
+    if (typeof Prism !== "undefined") {
+      Prism.highlightElement(code);
+    }
+  });
+
+  // Apply the current wrap state to the freshly-rendered pre elements.
+  applyCodeViewWrapState();
+}
 
 // ============================================================================
 // Settings persistence

@@ -334,10 +334,23 @@
 
         <div id="code-view-pill-rail" class="code-view-pill-rail"></div>
 
-        <div class="code-view-tabs" role="tablist" aria-label="Code language">
-          <button type="button" class="code-view-tab active" role="tab" aria-selected="true" aria-controls="code-view-panel-ts" id="code-view-tab-ts" data-tab="ts">TypeScript</button>
-          <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-py" id="code-view-tab-py" data-tab="py">Python</button>
-          <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-curl" id="code-view-tab-curl" data-tab="curl">curl</button>
+        <div class="code-view-tabs-row">
+          <div class="code-view-tabs" role="tablist" aria-label="Code language">
+            <button type="button" class="code-view-tab active" role="tab" aria-selected="true" aria-controls="code-view-panel-ts" id="code-view-tab-ts" data-tab="ts">TypeScript</button>
+            <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-py" id="code-view-tab-py" data-tab="py">Python</button>
+            <button type="button" class="code-view-tab" role="tab" aria-selected="false" aria-controls="code-view-panel-curl" id="code-view-tab-curl" data-tab="curl">curl</button>
+          </div>
+          <div class="code-view-tab-actions">
+            <label class="code-view-wrap-toggle" id="code-view-use-prompt-label" title="Send a prompt first to enable this">
+              <input type="checkbox" id="code-view-use-prompt" disabled />
+              <span>Original prompt</span>
+            </label>
+            <label class="code-view-wrap-toggle" title="Wrap long lines (off = horizontal scroll)">
+              <input type="checkbox" id="code-view-wrap" checked />
+              <span>Wrap</span>
+            </label>
+            <span id="code-view-copy-slot"></span>
+          </div>
         </div>
 
         <div class="code-view-body">

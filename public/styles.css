@@ -2951,13 +2951,21 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   color: var(--advisor);
 }
 
-/* Tab row */
+/* Tab row — flex container with tabs on the left and actions (wrap, copy)
+ * pinned to the right. */
+.code-view-tabs-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px 0 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--panel-2);
+}
+
 .code-view-tabs {
   display: flex;
   gap: 0;
-  padding: 0 18px;
-  border-bottom: 1px solid var(--border);
-  background: var(--panel-2);
 }
 
 .code-view-tab {
@@ -2989,18 +2997,67 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   outline-offset: -2px;
 }
 
-/* Body — holds the three tab panels. Only the active panel is shown
- * (controlled via the `hidden` attribute). */
+.code-view-tab-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.code-view-wrap-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.code-view-wrap-toggle input {
+  margin: 0;
+  cursor: pointer;
+  accent-color: var(--accent);
+}
+
+.code-view-wrap-toggle:hover {
+  color: var(--text);
+}
+
+/* Dim the whole label when its checkbox is disabled (e.g., Original prompt
+ * before the user has sent anything). */
+.code-view-wrap-toggle:has(input:disabled) {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.code-view-wrap-toggle:has(input:disabled):hover {
+  color: var(--muted);
+}
+
+.code-view-wrap-toggle input:disabled {
+  cursor: not-allowed;
+}
+
+.code-view-tab-actions .copy-btn {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Body — holds the three tab panels with a fixed height so the modal stays
+ * the same size regardless of which language is active (snippet length
+ * varies per language). Each panel scrolls internally. */
 .code-view-body {
   position: relative;
-  overflow: auto;
-  flex: 1 1 auto;
+  flex: 0 0 auto;
   background: var(--bg);
-  min-height: 200px;
+  height: min(620px, calc(100vh - 240px));
+  overflow: hidden;
 }
 
 .code-view-panel {
   position: relative;
+  height: 100%;
+  overflow: auto;
 }
 
 .code-view-panel pre[class*="language-"] {
@@ -3010,13 +3067,36 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
   font-size: 12.5px;
   line-height: 1.55;
   border-radius: 0;
+  min-height: 100%;
+  box-sizing: border-box;
 }
 
-.code-view-panel .copy-btn {
-  position: absolute;
-  top: 10px;
-  right: 12px;
-  z-index: 1;
+/* Wrap toggle behavior — default is wrap (no class). The .io-nowrap class
+ * (set by the wrap checkbox in the tab row) flips back to horizontal scroll.
+ * Both pre AND code need the white-space rule because Prism's theme sets
+ * `white-space: pre` on the inner code element, which would otherwise win. */
+.code-view-panel pre[class*="language-"],
+.code-view-panel pre[class*="language-"] code {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+}
+
+.code-view-panel pre[class*="language-"].io-nowrap,
+.code-view-panel pre[class*="language-"].io-nowrap code {
+  white-space: pre;
+  word-wrap: normal;
+  overflow-wrap: normal;
+}
+
+/* When wrap is off, let the panel itself scroll horizontally — not the pre.
+ * `min-width: max-content` makes the pre as wide as its widest line, which
+ * forces the panel's overflow:auto to expose a single horizontal scrollbar
+ * pinned at the bottom of the panel viewport (always visible). Without this,
+ * the scrollbar lives at the bottom of the pre, which is below the panel
+ * viewport when the snippet is taller than the panel. */
+.code-view-panel pre[class*="language-"].io-nowrap {
+  min-width: max-content;
 }
 
 /* Footer */
