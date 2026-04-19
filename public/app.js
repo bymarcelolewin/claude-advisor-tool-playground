@@ -112,7 +112,8 @@ const PRICES = {
   "claude-haiku-4-5-20251001": { in: 1.0, out: 5.0 },
   "claude-haiku-4-5":          { in: 1.0, out: 5.0 },
   "claude-sonnet-4-6":         { in: 3.0, out: 15.0 },
-  "claude-opus-4-6":           { in: 15.0, out: 75.0 },
+  "claude-opus-4-6":           { in: 5.0, out: 25.0 },
+  "claude-opus-4-7":           { in: 5.0, out: 25.0 },
   // OpenAI prices below are rough estimates — update as needed.
   "gpt-5.4":                   { in: 5.0, out: 15.0 },
 };
@@ -860,15 +861,35 @@ function parseMaxUses(raw) {
   return n;
 }
 
+// Setting `<select>.value` to a non-existent option value clears the
+// selection (renders blank) rather than falling back to the HTML `selected`
+// option. When we drop an option across versions (e.g. v1.6.0 removed
+// claude-opus-4-6 from the advisor dropdown), persisted settings referencing
+// the removed value would otherwise leave the dropdown visually empty.
+// This helper is a no-op when the saved value isn't in the DOM, letting the
+// HTML default take over.
+function setSelectIfValid(selectEl, value) {
+  if (!value) return;
+  if (selectEl.querySelector(`option[value="${CSS.escape(value)}"]`)) {
+    selectEl.value = value;
+  }
+}
+
 function applySettings(s) {
   if (s.apiKey != null) apiKeyEl.value = s.apiKey;
-  if (s.executor) executorEl.value = s.executor;
-  if (s.advisor) advisorEl.value = s.advisor;
-  if (s.mode) modeEl.value = s.mode;
+  setSelectIfValid(executorEl, s.executor);
+  setSelectIfValid(advisorEl, s.advisor);
+  setSelectIfValid(modeEl, s.mode);
   if (s.maxTokens) maxTokensEl.value = s.maxTokens;
-  if (s.advisorCaching) advisorCachingEl.value = s.advisorCaching;
+  setSelectIfValid(advisorCachingEl, s.advisorCaching);
   if (s.maxUses != null && s.maxUses !== "") maxUsesEl.value = s.maxUses;
-  if (s.effort) effortEl.value = s.effort;
+  // xhigh only lives in the dropdown when executor is Opus 4.7 (inserted by
+  // updateEffortAvailability). At init, updateEffortAvailability hasn't run
+  // yet, so ensure the option exists before we try to select it.
+  if (s.effort === "xhigh" && executorEl.value === "claude-opus-4-7") {
+    ensureXhighOption();
+  }
+  setSelectIfValid(effortEl, s.effort);
   systemEl.value = s.systemPrompt || SYSTEM_PROMPT_RECOMMENDED;
   if (s.customSystemPrompt) customSystemPromptText = s.customSystemPrompt;
   if (s.evalProvider) evalProviderEl.value = s.evalProvider;
@@ -1024,27 +1045,72 @@ function removeNaOption() {
   if (naOption) naOption.remove();
 }
 
+// xhigh is Opus 4.7-only. Insert it between "high" and "max" so the dropdown
+// stays in Anthropic's documented order (low, medium, high, xhigh, max).
+function ensureXhighOption() {
+  if (!effortEl.querySelector('option[value="xhigh"]')) {
+    const xhighOption = document.createElement("option");
+    xhighOption.value = "xhigh";
+    xhighOption.textContent = "xHigh";
+    const maxOption = effortEl.querySelector('option[value="max"]');
+    effortEl.insertBefore(xhighOption, maxOption);
+  }
+}
+
+function removeXhighOption() {
+  const xhighOption = effortEl.querySelector('option[value="xhigh"]');
+  if (xhighOption) xhighOption.remove();
+}
+
+// Track the user's last *explicit* effort selection so we can restore it
+// after a round-trip through an executor that forced a demotion (Haiku → "na",
+// non-Opus-4.7 → xhigh-to-high). Programmatic `effortEl.value = X` does NOT
+// fire "change" events, so this handler only captures user-initiated changes.
+// The synthetic "na" marker is skipped — it's not a real choice.
+effortEl.addEventListener("change", () => {
+  if (effortEl.value !== "na") {
+    savedEffortValue = effortEl.value;
+  }
+});
+
 function updateEffortAvailability() {
   const isHaiku = executorEl.value.startsWith("claude-haiku");
+  const isOpus47 = executorEl.value === "claude-opus-4-7";
+  const oldEffort = effortEl.value;
 
+  // Compute what the dropdown should display based on the user's last
+  // explicit selection (savedEffortValue), with demotion applied when the
+  // current executor doesn't support that value.
+  let desired;
   if (isHaiku) {
-    // Capture the real selection before swapping to "n/a", but only if the
-    // dropdown isn't already showing "n/a" (avoid overwriting on repeat calls).
-    if (effortEl.value !== "na") savedEffortValue = effortEl.value;
-    ensureNaOption();
-    effortEl.value = "na";
+    desired = "na";
+  } else if (savedEffortValue === "xhigh" && !isOpus47) {
+    desired = "high";
   } else {
-    removeNaOption();
-    if (effortEl.value === "na" || !effortEl.value) {
-      effortEl.value = savedEffortValue || "high";
-    }
+    desired = savedEffortValue || "high";
   }
 
+  // Keep the DOM options in sync with the desired value *before* setting
+  // effortEl.value — otherwise setting to a removed option silently blanks
+  // the select.
+  if (isOpus47) ensureXhighOption(); else removeXhighOption();
+  if (isHaiku) ensureNaOption(); else removeNaOption();
+
+  effortEl.value = desired;
   effortEl.disabled = isHaiku || effortLocked;
   let title = EFFORT_TITLE_DEFAULT;
   if (effortLocked) title = EFFORT_TITLE_LOCKED;
   else if (isHaiku) title = EFFORT_TITLE_HAIKU;
   effortEl.title = title;
+
+  // If the effort changed as a side-effect of the executor switch (demotion
+  // away from xhigh, or restoration back to it), persist the new value. The
+  // bulk auto-save listener fired on the executor change before this function
+  // ran, so it captured the stale effort value. This patch-save corrects the
+  // localStorage state so a refresh doesn't resurrect the pre-switch value.
+  if (oldEffort !== effortEl.value) {
+    saveSettings();
+  }
 }
 
 function setEffortLocked(locked) {
@@ -1111,6 +1177,19 @@ function setAdvisorLocked(locked) {
     advisorRowEl.title = locked ? ADVISOR_TITLE_LOCKED : "";
     advisorRowEl.classList.toggle("locked", locked);
   }
+}
+
+// Advisor caching is locked after the first successful turn. Anthropic's docs
+// call this out explicitly: toggling `caching` on/off mid-conversation shifts
+// the cache prefix and causes misses. The dropdown lives in the Settings modal
+// (not the config panel), so we lock via `disabled` + tooltip rather than the
+// .locked CSS class used on config rows.
+const CACHING_TITLE_DEFAULT = advisorCachingEl.title || "";
+const CACHING_TITLE_LOCKED =
+  "Advisor caching is locked once a conversation starts. Toggling mid-conversation causes cache misses. Click ＋ to start a new chat to change it.";
+function setCachingLocked(locked) {
+  advisorCachingEl.disabled = locked;
+  advisorCachingEl.title = locked ? CACHING_TITLE_LOCKED : CACHING_TITLE_DEFAULT;
 }
 
 // ============================================================================
@@ -1848,6 +1927,7 @@ async function send(userText) {
     setEffortLocked(true);
     setExecutorLocked(true);
     setAdvisorLocked(true);
+    setCachingLocked(true);
   }
 
   // Bump turn counter at the start so chat and trace share the same number.
@@ -2054,6 +2134,7 @@ async function send(userText) {
       setEffortLocked(false);
       setExecutorLocked(false);
       setAdvisorLocked(false);
+      setCachingLocked(false);
     }
     inputEl.focus();
   }
@@ -2411,6 +2492,7 @@ resetBtn.addEventListener("click", async () => {
   setEffortLocked(false);
   setExecutorLocked(false);
   setAdvisorLocked(false);
+  setCachingLocked(false);
   inputEl.focus();
 });
 

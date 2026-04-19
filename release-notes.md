@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.6.0 — Advisor Tool API Catch-up (Opus 4.7) (2026-04-18)](#v160--advisor-tool-api-catch-up-opus-47---2026-04-18)
 - [v1.5.0 — Code View & Syntax Highlighting (2026-04-17)](#v150--code-view--syntax-highlighting---2026-04-17)
 - [v1.4.0 — Advisor Tool API Catch-up (2026-04-16)](#v140--advisor-tool-api-catch-up---2026-04-16)
 - [v1.3.0 — Conversation Totals Dashboard (2026-04-13)](#v130--conversation-totals-dashboard---2026-04-13)
@@ -11,6 +12,34 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.6.0 — Advisor Tool API Catch-up (Opus 4.7) - 2026-04-18
+
+## Overview
+Brings the playground up to date with Anthropic's April 2026 advisor tool documentation changes. Claude Opus 4.7 is now the only documented advisor model (replacing Opus 4.6), Opus 4.7 is a new executor option, a new `xhigh` effort level is available on Opus 4.7 only, and advisor-side caching carries a new "keep consistent mid-conversation" guidance. The Anthropic evaluator judge is upgraded to Opus 4.7. Also corrects a stale Opus 4.6 price ($15/$75 → $5/$25 per MTok) that had been rendering inflated cost estimates in the trace pane, and adds Anthropic's pricing URL to the reference doc and the `/check-advisor-tool-updates` command so future catch-up runs surface pricing drift.
+
+## Key Features
+- **Claude Opus 4.7 as advisor and executor.** Executor dropdown adds `claude-opus-4-7` alongside Haiku 4.5, Sonnet 4.6, and Opus 4.6. Advisor dropdown replaces Opus 4.6 with Opus 4.7 as the sole documented advisor option (selected by default). Per Anthropic's current compatibility table, Opus 4.7 is the only supported advisor; Opus 4.6 is no longer listed.
+- **New `xhigh` effort level, Opus 4.7 only.** Sits between `high` and `max`. Anthropic describes it as *"Extended capability for long-horizon work"* and the recommended starting point for coding and agentic tasks on Opus 4.7. The playground shows xHigh in the effort dropdown only when the executor is Opus 4.7, mirroring the existing pattern where effort is hidden for Haiku 4.5. The user's xHigh selection is preserved across executor switches.
+- **Anthropic evaluator judge upgraded to Opus 4.7.** `EVAL_MODEL_ANTHROPIC` now points at `claude-opus-4-7`. Settings modal labels updated accordingly. Judge always uses the best available Anthropic model; no 4.6 option.
+- **Advisor Caching locks after first message.** Anthropic's caching-consistency guidance says toggling `caching` mid-conversation shifts the cache prefix and causes misses. The Advisor Caching dropdown in the Settings modal now joins the existing lock set (Mode, Executor, Advisor, Effort) and is disabled after the first successful turn with a tooltip explaining why. Unlocks on New Chat.
+
+## Enhancements
+- **Corrected stale Opus 4.6 pricing.** The `PRICES` table in `public/app.js` had Opus 4.6 at $15/$75 per MTok — Anthropic's authoritative pricing page shows it at $5/$25 per MTok (and has for some time). All in-app cost estimates on Opus 4.6 conversations drop roughly 3×. Opus 4.7 added at the same $5/$25 rates.
+- **Tokenizer note on the cost-estimates blurb.** Opus 4.7 uses a new tokenizer that may use up to ~35% more tokens for the same text — effective cost can be higher than the per-MTok rate suggests. Called out in the Settings modal cost-estimates paragraph.
+- **Reference doc refresh.** `docs/reference/claude-advisor-tool-updates.md` has a full executor/advisor compatibility table, a per-level effort availability table with Opus 4.7-specific notes (stricter effort adherence, no manual extended thinking, recommended `max_tokens` when running xhigh/max), the "keep caching consistent" warning, and a new "Pricing Snapshot" section capturing verified rates + cache multipliers + batch discount + data-residency multiplier.
+- **`/check-advisor-tool-updates` command hardened.** Added `https://platform.claude.com/docs/en/about-claude/pricing` as a third WebFetch in the catch-up diff. Added "Model pricing" to the diff checklist so future runs surface pricing drift the same way they surface API-surface drift.
+
+## Bug Fixes
+- Fixed stale Opus 4.6 price in `public/app.js` (`{ in: 15.0, out: 75.0 }` → `{ in: 5.0, out: 25.0 }`) and in the Settings modal cost-estimates blurb. The mismatch had been inflating trace-pane cost estimates for Opus 4.6 conversations by roughly 3×.
+
+## Other Notes
+- **No code changes to the Code View modal.** Code View reads live state from the config selectors and serializes through `JSON.stringify(snap.effort)` and pass-through for model IDs — the new `xhigh` value and `claude-opus-4-7` model ID flow through automatically with no additional work.
+- **Opus 4.6 may still be accepted as advisor by the API during a grace period**, but the playground sticks to Anthropic's documented compatibility table (Opus 4.7-only). If Anthropic publishes an explicit deprecation date for 4.6-as-advisor, add a tracking note here.
+- **`max_tokens` guidance for xhigh/max:** Anthropic recommends starting at 64k tokens when running Opus 4.7 at `xhigh` or `max` effort. The playground's `max_tokens` default (8192) may be too low for full xHigh-caliber responses; users running those effort levels should bump Settings → Chat & Advisor → Max tokens.
+- **MIT license added.** The repo now ships with a top-level `LICENSE` file (MIT, Copyright (c) 2026 Red Pill Blue Pill Studios) and a License badge + bottom-of-README section linking to it. Makes the open-source status unambiguous for anyone forking or reusing.
 
 ---
 

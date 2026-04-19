@@ -5,8 +5,9 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 **Source URLs:**
 - Advisor tool: https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
+- Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
 
-Last reviewed: 2026-04-16
+Last reviewed: 2026-04-18
 
 ---
 
@@ -14,9 +15,20 @@ Last reviewed: 2026-04-16
 
 - **Beta header:** `advisor-tool-2026-03-01` (unchanged since launch)
 - **Tool type:** `advisor_20260301`
-- **Supported executor models:** Claude Haiku 4.5, Claude Sonnet 4.6, Claude Opus 4.6
-- **Supported advisor models:** Claude Opus 4.6 (only)
+- **Supported executor models:** Claude Haiku 4.5, Claude Sonnet 4.6, Claude Opus 4.6, Claude Opus 4.7
+- **Supported advisor models:** Claude Opus 4.7 (only)
 - **Platform:** Claude API (Anthropic) only
+
+### Model compatibility table (from Anthropic's docs)
+
+| Executor models                                | Advisor models                      |
+|------------------------------------------------|-------------------------------------|
+| Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) | Claude Opus 4.7 (`claude-opus-4-7`) |
+| Claude Sonnet 4.6 (`claude-sonnet-4-6`)        | Claude Opus 4.7 (`claude-opus-4-7`) |
+| Claude Opus 4.6 (`claude-opus-4-6`)            | Claude Opus 4.7 (`claude-opus-4-7`) |
+| Claude Opus 4.7 (`claude-opus-4-7`)            | Claude Opus 4.7 (`claude-opus-4-7`) |
+
+Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4.6 is no longer documented as a supported advisor; empirically it may still be accepted by the API during a grace period, but code should default to Opus 4.7.
 
 ---
 
@@ -102,9 +114,30 @@ When the advisor sub-inference fails, the result carries an error instead of adv
 The `effort` parameter controls how much thinking effort the model puts in. Pairing with the advisor:
 
 - **Sonnet at medium effort + Opus advisor** = intelligence comparable to Sonnet at default effort, at lower cost
-- **Default effort** = maximum intelligence
+- **Default effort** = `high` (explicit `"high"` and omitting the parameter produce identical behavior)
 
-This is a parameter on the main API request, not on the advisor tool definition.
+This is a parameter on the main API request (`output_config.effort`), not on the advisor tool definition. It applies to the **executor's** inference only — the advisor sub-inference runs with its own defaults.
+
+### Effort levels
+
+| Level    | Available on                                                      | Description |
+|----------|-------------------------------------------------------------------|-------------|
+| `low`    | Haiku 4.5 not supported; all other supported models                | Efficient, best for short scoped tasks. |
+| `medium` | Same as above                                                     | Balanced; drop-in for average workflows where cost matters. |
+| `high`   | Same as above                                                     | Default. Sweet spot for most intelligence-sensitive workloads. |
+| `xhigh`  | **Opus 4.7 only**                                                 | Extended capability for long-horizon work. Recommended starting point for coding and agentic tasks (>30 minute sessions, million-token budgets). |
+| `max`    | Opus 4.7, Opus 4.6, Sonnet 4.6 (and Claude Mythos Preview)         | Absolute maximum capability. Reserve for genuinely frontier problems; often overthinks on structured-output tasks. |
+
+### Opus 4.7-specific notes
+
+- `xhigh` is a new level introduced with Opus 4.7; it sits between `high` and `max`.
+- Opus 4.7 **respects effort more strictly** than 4.6 — especially at `low` and `medium`. At lower effort it scopes work to what was asked rather than going above and beyond. If reasoning seems shallow on a complex task, raise effort rather than prompting around it.
+- Manual extended thinking (`thinking: {type: "enabled", budget_tokens: N}`) is **not supported** on Opus 4.7. Opus 4.7 uses adaptive thinking; effort is the control.
+- When running at `xhigh` or `max`, set a large `max_tokens` (64k is a reasonable starting default) so the model has room to think and act across subagents and tool calls.
+
+### Effort on Haiku 4.5
+
+Haiku 4.5 does **not** support the effort parameter. Sending `output_config.effort` to Haiku is rejected. The playground handles this by hiding the effort dropdown when Haiku is the selected executor.
 
 ---
 
@@ -123,7 +156,9 @@ This is a parameter on the main API request, not on the advisor tool definition.
 
 **Break-even:** Cache write costs more than reads save when advisor is called 2 or fewer times per conversation. Breaks even at roughly 3 calls.
 
-**Warning:** `clear_thinking` with `keep` value other than `"all"` shifts the advisor's transcript each turn, causing cache misses. When extended thinking is enabled without explicit `clear_thinking` config, the API defaults to `keep: {type: "thinking_turns", value: 1}`, which triggers this. Set `keep: "all"` to preserve advisor cache stability.
+**Warning — keep caching consistent:** Set `caching` once and leave it for the whole conversation. Toggling it off and on mid-conversation shifts the cache prefix and causes cache misses. The playground enforces this by locking the Advisor Caching dropdown after the first successful turn.
+
+**Warning — `clear_thinking`:** `clear_thinking` with `keep` value other than `"all"` shifts the advisor's transcript each turn, causing cache misses. When extended thinking is enabled without explicit `clear_thinking` config, the API defaults to `keep: {type: "thinking_turns", value: 1}`, which triggers this. Set `keep: "all"` to preserve advisor cache stability.
 
 ---
 
@@ -231,3 +266,22 @@ The advisor sub-inference does not stream. The executor's stream pauses while th
 - `max_tokens` applies to executor output only — does not bound advisor tokens
 - Advisor output is typically 400-700 text tokens, or 1,400-1,800 tokens total including thinking
 - Anthropic Priority Tier is per-model — Priority Tier on executor does not extend to advisor
+
+---
+
+## Pricing Snapshot
+
+Verified against `https://platform.claude.com/docs/en/about-claude/pricing` on the Last Reviewed date at the top of this file. Re-check on future catch-up runs — pricing drifts independently of API surface changes.
+
+| Model            | Input / MTok | Output / MTok | Notes |
+|------------------|--------------|---------------|-------|
+| Claude Opus 4.7  | $5           | $25           | New tokenizer — may use up to ~35% more tokens for the same text. Effective cost higher than sticker. |
+| Claude Opus 4.6  | $5           | $25           | Opus-tier pricing dropped from the old $15/$75 at some point; this file previously carried the stale number. |
+| Claude Sonnet 4.6 | $3          | $15           | |
+| Claude Haiku 4.5 | $1           | $5            | Does not support `effort` parameter. |
+
+Cache multipliers: 5-minute cache write = 1.25× base input; 1-hour cache write = 2× base input; cache read (hit) = 0.1× base input.
+
+Batch API: 50% discount on both input and output.
+
+Data residency (US-only via `inference_geo`): 1.1× multiplier on all token categories for Opus 4.7, Opus 4.6, and newer.

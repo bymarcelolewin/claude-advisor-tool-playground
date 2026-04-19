@@ -349,7 +349,7 @@ const JUDGE_MAX_TOKENS = 4096;
 const JUDGE_LETTERS = ["A", "B", "C", "D"];
 
 // Hardcoded current evaluator model names. Update when models turn over.
-const EVAL_MODEL_ANTHROPIC = "claude-opus-4-6";
+const EVAL_MODEL_ANTHROPIC = "claude-opus-4-7";
 const EVAL_MODEL_OPENAI = "gpt-5.4";
 
 // Build the candidate block for a given ordering. Returns the text block

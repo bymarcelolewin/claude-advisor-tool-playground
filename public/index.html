@@ -95,7 +95,7 @@
             <div class="setting">
               <label for="advisor-caching">
                 Advisor caching
-                <span class="setting-hint">Enables prompt caching for the advisor's own transcript. Breaks even at ≈3 advisor calls per conversation. Use 1h for long-running agent loops.</span>
+                <span class="setting-hint">Enables prompt caching for the advisor's own transcript. Breaks even at ≈3 advisor calls per conversation. Use 1h for long-running agent loops. Set once and leave — changing mid-conversation shifts the cache prefix and causes misses, so this dropdown locks after the first message.</span>
               </label>
               <select id="advisor-caching">
                 <option value="off" selected>Off</option>
@@ -144,10 +144,10 @@
             <div class="setting full">
               <label for="eval-provider">
                 Evaluator provider
-                <span class="setting-hint">Anthropic uses <code>claude-opus-4-6</code>. OpenAI uses <code>gpt-5.4</code>. Model names are hardcoded — update them in <code>server.js</code> when new models ship.</span>
+                <span class="setting-hint">Anthropic uses <code>claude-opus-4-7</code> at <code>high</code> effort (the API default). OpenAI uses <code>gpt-5.4</code> at its default reasoning level. Evaluator effort is fixed — the Config Models <strong>Effort</strong> setting applies to the executor only, not to the judge.</span>
               </label>
               <select id="eval-provider">
-                <option value="anthropic" selected>Anthropic · claude-opus-4-6</option>
+                <option value="anthropic" selected>Anthropic · claude-opus-4-7</option>
                 <option value="openai">OpenAI · gpt-5.4</option>
               </select>
             </div>
@@ -189,7 +189,7 @@
             <strong>Security:</strong> this server binds to <code>127.0.0.1</code> only. Do not expose it on a network. Your API keys are sent from this page to the local backend and forwarded to Anthropic or OpenAI — they are never logged.
           </div>
           <div class="settings-notice">
-            <strong>Cost estimates:</strong> all est. cost values in the trace pane use public list prices (Haiku 4.5 $1/$5, Sonnet 4.6 $3/$15, Opus 4.6 $15/$75, gpt-5.4 ~$5/$15 per MTok in/out; <code>cache_r</code> ≈ 10% of input; <code>cache_w</code> ≈ 125% of input). Approximate — verify against current pricing. Prices are hardcoded in <code>public/app.js</code>.
+            <strong>Cost estimates:</strong> all est. cost values in the trace pane use public list prices (Haiku 4.5 $1/$5, Sonnet 4.6 $3/$15, Opus 4.6 $5/$25, Opus 4.7 $5/$25, gpt-5.4 ~$5/$15 per MTok in/out; <code>cache_r</code> ≈ 10% of input; <code>cache_w</code> ≈ 125% of input). Approximate — verify against current pricing. Prices are hardcoded in <code>public/app.js</code>. <strong>Note:</strong> Opus 4.7 uses a new tokenizer that may use up to ~35% more tokens for the same text — effective cost can be higher than the per-MTok rate suggests.
           </div>
           <div class="settings-notice settings-notice-action">
             <div>
@@ -242,9 +242,10 @@
               <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
               <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
               <option value="claude-opus-4-6">claude-opus-4-6</option>
+              <option value="claude-opus-4-7">claude-opus-4-7</option>
             </select>
             <label class="config-label config-label-inline">EFFORT</label>
-            <select id="effort" class="config-select config-select-narrow" title="Controls thinking depth and overall token spend. Applies to the executor. Not supported on Haiku 4.5.">
+            <select id="effort" class="config-select config-select-narrow" title="Controls thinking depth and overall token spend. Applies to the executor, not the advisor sub-inference. Not supported on Haiku 4.5. xHigh is Opus 4.7 only.">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high" selected>High</option>
@@ -254,7 +255,7 @@
           <div class="config-row">
             <label class="config-label">ADVISOR</label>
             <select id="advisor" class="config-select">
-              <option value="claude-opus-4-6" selected>claude-opus-4-6</option>
+              <option value="claude-opus-4-7" selected>claude-opus-4-7</option>
             </select>
           </div>
           <div class="config-row" title="Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.">
