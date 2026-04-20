@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.6.1 — Documentation Update (Patch) (2026-04-20)](#v161--documentation-update-patch---2026-04-20)
 - [v1.6.0 — Advisor Tool API Catch-up (Opus 4.7) (2026-04-18)](#v160--advisor-tool-api-catch-up-opus-47---2026-04-18)
 - [v1.5.0 — Code View & Syntax Highlighting (2026-04-17)](#v150--code-view--syntax-highlighting---2026-04-17)
 - [v1.4.0 — Advisor Tool API Catch-up (2026-04-16)](#v140--advisor-tool-api-catch-up---2026-04-16)
@@ -12,6 +13,12 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.6.1 — Documentation Update (Patch) - 2026-04-20
+- **Type:** Small Enhancement
+- **Summary:** Refreshed `docs/reference/claude-advisor-tool-updates.md` to mirror new guidance on Anthropic's published docs since the 2026-04-18 review. No API-surface or pricing changes, no app code touched. Added per-level effort recommendation tables for Opus 4.7 and Sonnet 4.6, a new "Effort with tool use" block, a `budget_tokens` deprecation note for Opus 4.6 / Sonnet 4.6, the multi-turn 400 rule when omitting the advisor tool while `advisor_tool_result` blocks remain in history, and four pricing sub-notes (tool-use system-prompt overhead, long-context standard pricing, Opus 4.6 fast mode, AWS Bedrock / Vertex regional 10% premium). Bumped "Last reviewed" to 2026-04-20 and fixed stale Opus 4.6 example references to Opus 4.7.
 
 ---
 

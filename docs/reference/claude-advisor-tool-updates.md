@@ -7,7 +7,7 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
 - Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
 
-Last reviewed: 2026-04-18
+Last reviewed: 2026-04-20
 
 ---
 
@@ -38,7 +38,7 @@ Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4
 |-----------|------|---------|-------------|
 | `type` | string | required | Must be `"advisor_20260301"` |
 | `name` | string | required | Must be `"advisor"` |
-| `model` | string | required | Advisor model ID (e.g., `"claude-opus-4-6"`) |
+| `model` | string | required | Advisor model ID (e.g., `"claude-opus-4-7"`) |
 | `max_uses` | integer | unlimited | Max advisor calls per single API request. Excess calls return `advisor_tool_result_error` with `error_code: "max_uses_exceeded"`. Per-request cap only — for conversation-level limits, count client-side. |
 | `caching` | object or null | null (off) | Enables prompt caching for the advisor's transcript. Shape: `{"type": "ephemeral", "ttl": "5m" | "1h"}`. Not a breakpoint marker — it's an on/off switch; the server decides cache boundaries. |
 
@@ -49,7 +49,7 @@ Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4
 The `advisor_tool_result.content` field is a discriminated union:
 
 ### `advisor_result` (standard)
-Returned when the advisor model provides plaintext advice (e.g., Claude Opus 4.6 today).
+Returned when the advisor model provides plaintext advice (e.g., Claude Opus 4.7 today).
 ```json
 {
   "type": "advisor_tool_result",
@@ -128,12 +128,48 @@ This is a parameter on the main API request (`output_config.effort`), not on the
 | `xhigh`  | **Opus 4.7 only**                                                 | Extended capability for long-horizon work. Recommended starting point for coding and agentic tasks (>30 minute sessions, million-token budgets). |
 | `max`    | Opus 4.7, Opus 4.6, Sonnet 4.6 (and Claude Mythos Preview)         | Absolute maximum capability. Reserve for genuinely frontier problems; often overthinks on structured-output tasks. |
 
+### Opus 4.7 per-level guidance
+
+Anthropic publishes per-level recommendations specifically for Opus 4.7 — use this table when picking effort for coding / agentic workloads. The API default is `high`; `xhigh` requires an explicit setting.
+
+| Effort   | Guidance for Claude Opus 4.7 |
+|----------|------------------------------|
+| `low`    | Efficient, but best for short, scoped tasks. Pair `low` with explicit checklists if the task has multiple sections. |
+| `medium` | Drop-in for the average workflow where you want good results while reducing costs. |
+| `high`   | Advanced use cases that still need a balance of intelligence and token consumption. Often the sweet spot balancing quality and token efficiency. |
+| `xhigh`  | Recommended starting point for coding and agentic work, and exploratory tasks (repeated tool calling, detailed web search, knowledge-base search). Expect meaningfully higher token usage than `high`. |
+| `max`    | Reserve for genuinely frontier problems. On most workloads, `max` adds significant cost for small quality gains; on structured-output or less intelligence-sensitive tasks it can overthink. |
+
+### Sonnet 4.6 per-level guidance
+
+Sonnet 4.6 also defaults to `high`, but Anthropic explicitly recommends `medium` as the everyday default — set effort explicitly on Sonnet 4.6 to avoid unexpected latency.
+
+| Effort   | Guidance for Claude Sonnet 4.6 |
+|----------|--------------------------------|
+| `low`    | High-volume or latency-sensitive work. Chat, non-coding tasks. |
+| `medium` | **Recommended default.** Best balance of speed / cost / performance for agentic coding, tool-heavy workflows, and code generation. |
+| `high`   | Tasks that need maximum Sonnet 4.6 intelligence. |
+| `max`    | Absolute highest capability on Sonnet 4.6; reserve for frontier problems. |
+
+### Effort with tool use
+
+Effort shifts tool-call behavior, not just reasoning depth:
+
+- **Lower effort** → combines operations, fewer tool calls, direct action, terse confirmations.
+- **Higher effort** → more tool calls, plan-and-explain before action, detailed summaries, more code comments.
+
 ### Opus 4.7-specific notes
 
 - `xhigh` is a new level introduced with Opus 4.7; it sits between `high` and `max`.
 - Opus 4.7 **respects effort more strictly** than 4.6 — especially at `low` and `medium`. At lower effort it scopes work to what was asked rather than going above and beyond. If reasoning seems shallow on a complex task, raise effort rather than prompting around it.
 - Manual extended thinking (`thinking: {type: "enabled", budget_tokens: N}`) is **not supported** on Opus 4.7. Opus 4.7 uses adaptive thinking; effort is the control.
 - When running at `xhigh` or `max`, set a large `max_tokens` (64k is a reasonable starting default) so the model has room to think and act across subagents and tool calls.
+
+### `budget_tokens` deprecation on Opus 4.6 / Sonnet 4.6
+
+- On **Opus 4.6** and **Sonnet 4.6**, `thinking: {type: "enabled", budget_tokens: N}` is still accepted but is **deprecated** and will be removed in a future model release. Use `effort` with adaptive thinking (`thinking: {type: "adaptive"}`) as the replacement.
+- **Opus 4.7** has already dropped manual extended thinking entirely (see note above).
+- **Opus 4.5 and earlier Claude 4 models** continue to use manual thinking; effort works alongside the token budget.
 
 ### Effort on Haiku 4.5
 
@@ -235,6 +271,8 @@ The advisor tool is eligible for ZDR. When your organization has a ZDR arrangeme
 
 The advisor tool composes with other server-side and client-side tools in the same `tools` array. The executor can search the web, call the advisor, and use custom tools in the same turn. The advisor's plan can inform which tools the executor reaches for next.
 
+**Multi-turn constraint:** If the conversation history still contains `advisor_tool_result` blocks, the advisor tool MUST remain in the `tools` array on every follow-up request. Omitting it while those blocks exist in history returns `400 invalid_request_error`. To enforce a conversation-level cap (since `max_uses` only caps per request), strip both the advisor tool from `tools` AND all `advisor_tool_result` blocks from history on the capped turn.
+
 | Feature | Interaction |
 |---------|------------|
 | Batch processing | Supported. `usage.iterations` reported per item. |
@@ -284,4 +322,27 @@ Cache multipliers: 5-minute cache write = 1.25× base input; 1-hour cache write 
 
 Batch API: 50% discount on both input and output.
 
-Data residency (US-only via `inference_geo`): 1.1× multiplier on all token categories for Opus 4.7, Opus 4.6, and newer.
+Data residency (US-only via `inference_geo`): 1.1× multiplier on all token categories for Opus 4.7, Opus 4.6, and newer. Claude API (1P) only — earlier models retain existing pricing regardless of `inference_geo`.
+
+### Long-context pricing
+
+Claude Mythos Preview, Opus 4.7, Opus 4.6, and Sonnet 4.6 include the **full 1M-token context window at standard pricing** — no premium tier beyond 200k tokens. Prior Claude generations with 1M-token support charged a premium for tokens above the 200k threshold; these four do not.
+
+### Tool-use system-prompt overhead
+
+Enabling tool use adds a hidden system-prompt overhead to the first executor iteration's `input_tokens`. Verified on Opus 4.7, Opus 4.6, Sonnet 4.6, and Haiku 4.5:
+
+| `tool_choice` | Overhead |
+|---------------|----------|
+| `auto`, `none` | 346 tokens |
+| `any`, `tool`  | 313 tokens |
+
+Informational only — the playground uses default (`auto`) behavior and displays the overhead as part of the baseline input token count.
+
+### Fast mode (Opus 4.6 only, beta research preview)
+
+Opus 4.6 offers a "fast mode" beta at 6× standard pricing — $30 / MTok input, $150 / MTok output. Applies across the full context window including above 200k tokens. **Not available with Batch API.** The playground does not currently expose fast mode.
+
+### Regional endpoint premium (non-Anthropic platforms)
+
+AWS Bedrock and Google Vertex regional / multi-region endpoints carry a **10% premium** over global endpoints for Claude Sonnet 4.5, Haiku 4.5, and future models. Not applicable to the playground (Anthropic API only), but worth tracking for users considering a production deploy on those platforms.
