@@ -99,6 +99,8 @@ Closeout:
 - `cody.json` bumped: `version` 1.6.0 → 1.6.1; `updatedAt` 2026-04-18 → 2026-04-20.
 - `release-notes.md` TOC updated and patch entry prepended at the top with the patch-format template (Type + Summary).
 - `README.md` version badge bumped 1.6.0 → 1.6.1 (line 3) and the "Most recent" blurb in the Release Notes section (line 312) updated to describe the v1.6.1 patch scope.
+- `package.json` bumped: `version` 1.6.0 → 1.6.1 and `lastUpdated` 2026-04-18 → 2026-04-20. The `lastUpdated` field is user-facing — it feeds the About modal via the `/api/version` endpoint.
+- `package-lock.json` synced to 1.6.1 (was stale at 1.2.1 — had not been bumped since the v1.2.1 patch; caught and fixed as part of the "everywhere" sweep).
 
 ## Files Changed
 _List of files that were created, modified, or deleted._
@@ -108,6 +110,8 @@ _List of files that were created, modified, or deleted._
 | [docs/reference/claude-advisor-tool-updates.md](../../reference/claude-advisor-tool-updates.md) | Modified |
 | [release-notes.md](../../../release-notes.md) | Modified |
 | [README.md](../../../README.md) | Modified |
+| [package.json](../../../package.json) | Modified |
+| [package-lock.json](../../../package-lock.json) | Modified |
 | [cody.json](../../../cody.json) | Modified |
 | [docs/build/v1.6.1-documentation-update/patch.md](./patch.md) | Created |
 
@@ -132,4 +136,8 @@ This is a documentation patch — no runtime behavior changed. Verification is p
 
 4. **README up to date** — open [README.md](../../../README.md) and confirm the version badge at the top says `version-1.6.1` and the Release Notes paragraph near the bottom describes v1.6.1 (not v1.6.0).
 
-5. **No app regressions** — since nothing in `server.js` or `public/app.js` was touched, no runtime smoke test is required. `npm start` behavior is unchanged.
+5. **package.json bumped** — open [package.json](../../../package.json) and confirm `version: "1.6.1"` and `lastUpdated: "2026-04-20"`. Then run `npm start` and open the About modal — the "Last updated" line should read 2026-04-20 (it's read live from `/api/version`).
+
+6. **package-lock.json synced** — open [package-lock.json](../../../package-lock.json) and confirm both top-level `version` and `packages[""].version` read `1.6.1` (they were stale at `1.2.1`).
+
+7. **No app regressions** — since nothing in `server.js` or `public/app.js` was touched, no runtime smoke test is required. `npm start` behavior is unchanged.
