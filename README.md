@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.6.0-blue)
+![Version](https://img.shields.io/badge/version-1.6.1-blue)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
 [![GitHub stars](https://img.shields.io/github/stars/bymarcelolewin/claude-advisor-tool-playground?style=social)](https://github.com/bymarcelolewin/claude-advisor-tool-playground)
@@ -309,7 +309,7 @@ Every snippet starts with a self-documenting comment block listing all current s
 
 ## Release Notes
 
-See [release-notes.md](release-notes.md) for the full release history. Most recent: **v1.6.0** — Claude Opus 4.7 as advisor and executor, new `xHigh` effort level (Opus 4.7 only), Anthropic judge upgraded to 4.7, advisor caching locks after first message, and corrected a stale Opus 4.6 price.
+See [release-notes.md](release-notes.md) for the full release history. Most recent: **v1.6.1** (Patch) — Documentation-only refresh of `docs/reference/claude-advisor-tool-updates.md` to mirror Anthropic's latest guidance (per-level effort recommendations for Opus 4.7 and Sonnet 4.6, `budget_tokens` deprecation on 4.6-tier models, multi-turn advisor-tool constraint, and four pricing sub-notes). No API-surface or pricing changes; no app code touched.
 
 ---
 

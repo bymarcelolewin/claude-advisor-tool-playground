@@ -98,6 +98,7 @@ Also extended the existing data-residency line with the "Claude API (1P) only" c
 Closeout:
 - `cody.json` bumped: `version` 1.6.0 → 1.6.1; `updatedAt` 2026-04-18 → 2026-04-20.
 - `release-notes.md` TOC updated and patch entry prepended at the top with the patch-format template (Type + Summary).
+- `README.md` version badge bumped 1.6.0 → 1.6.1 (line 3) and the "Most recent" blurb in the Release Notes section (line 312) updated to describe the v1.6.1 patch scope.
 
 ## Files Changed
 _List of files that were created, modified, or deleted._
@@ -106,6 +107,7 @@ _List of files that were created, modified, or deleted._
 |------|--------|
 | [docs/reference/claude-advisor-tool-updates.md](../../reference/claude-advisor-tool-updates.md) | Modified |
 | [release-notes.md](../../../release-notes.md) | Modified |
+| [README.md](../../../README.md) | Modified |
 | [cody.json](../../../cody.json) | Modified |
 | [docs/build/v1.6.1-documentation-update/patch.md](./patch.md) | Created |
 
@@ -128,4 +130,6 @@ This is a documentation patch — no runtime behavior changed. Verification is p
 
 3. **Project metadata bumped** — open [cody.json](../../../cody.json) and confirm `version: "1.6.1"` and `updatedAt: "2026-04-20"`.
 
-4. **No app regressions** — since nothing in `server.js` or `public/app.js` was touched, no runtime smoke test is required. `npm start` behavior is unchanged.
+4. **README up to date** — open [README.md](../../../README.md) and confirm the version badge at the top says `version-1.6.1` and the Release Notes paragraph near the bottom describes v1.6.1 (not v1.6.0).
+
+5. **No app regressions** — since nothing in `server.js` or `public/app.js` was touched, no runtime smoke test is required. `npm start` behavior is unchanged.
