@@ -7,7 +7,7 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
 - Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
 
-Last reviewed: 2026-04-20
+Last reviewed: 2026-04-21
 
 ---
 
