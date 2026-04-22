@@ -7,7 +7,7 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
 - Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
 
-Last reviewed: 2026-04-21
+Last reviewed: 2026-04-22
 
 ---
 
@@ -170,6 +170,7 @@ Effort shifts tool-call behavior, not just reasoning depth:
 - On **Opus 4.6** and **Sonnet 4.6**, `thinking: {type: "enabled", budget_tokens: N}` is still accepted but is **deprecated** and will be removed in a future model release. Use `effort` with adaptive thinking (`thinking: {type: "adaptive"}`) as the replacement.
 - **Opus 4.7** has already dropped manual extended thinking entirely (see note above).
 - **Opus 4.5 and earlier Claude 4 models** continue to use manual thinking; effort works alongside the token budget.
+- **Claude Mythos Preview** uses adaptive thinking by default — no `thinking` configuration is required, and `thinking: {type: "disabled"}` is rejected. Effort controls thinking depth the same way as on Opus 4.7 and Opus 4.6.
 
 ### Effort on Haiku 4.5
 
@@ -346,3 +347,5 @@ Opus 4.6 offers a "fast mode" beta at 6× standard pricing — $30 / MTok input,
 ### Regional endpoint premium (non-Anthropic platforms)
 
 AWS Bedrock and Google Vertex regional / multi-region endpoints carry a **10% premium** over global endpoints for Claude Sonnet 4.5, Haiku 4.5, and future models. Not applicable to the playground (Anthropic API only), but worth tracking for users considering a production deploy on those platforms.
+
+**Microsoft Foundry** is now listed alongside AWS Bedrock and Google Vertex AI as a third-party distribution platform for Claude models. Foundry has its own pricing page; the 10% regional/multi-region premium structure documented above is specific to AWS Bedrock and Google Vertex AI and may not apply identically on Foundry. Not applicable to the playground.
