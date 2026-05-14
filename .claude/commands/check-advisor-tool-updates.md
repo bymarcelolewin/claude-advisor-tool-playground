@@ -17,6 +17,8 @@ Read and execute `.cody/commands/refresh.md`. Follow the instructions through th
 
 ## Step 3: Diff the Advisor Tool docs against our playground
 
+**Scope.** When diffing the three upstream pages, only flag changes that affect **the advisor tool API surface, advisor effort behavior, or the pricing of models / features the playground actually uses or exposes**. Real upstream changes that are tangential — Claude Platform on AWS billing (CCUs), Claude Managed Agents pricing, pricing for unrelated server-side tools (code execution, web search, web fetch, text editor, computer use, bash), and models outside the advisor tool's executor/advisor compatibility table (e.g., Opus 4.5, Opus 4.1, Sonnet 4.5) — should be acknowledged in your scan but **excluded from the findings list and not added to the reference doc**. Overlap items stay in scope: e.g., fast-mode pricing on Opus 4.7 belongs in the findings because Opus 4.7 is a valid advisor-tool executor and the playground's advisor model. The test is "does it affect the advisor tool API, advisor effort behavior, or pricing of a model/feature the playground actually uses?" — not "did the source page change?" See the "Scope" block at the top of `docs/reference/claude-advisor-tool-updates.md` for the authoritative scope statement.
+
 1. Read `docs/reference/claude-advisor-tool-updates.md` — this is our canonical record of what Anthropic has published and what we've implemented. Note the "Last reviewed" date and any "Implemented: ✅ / ❌" markers.
 2. WebFetch `https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool`.
 3. WebFetch `https://platform.claude.com/docs/en/build-with-claude/effort`.

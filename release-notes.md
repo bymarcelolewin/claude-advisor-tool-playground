@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.6.2 — Documentation Refresh (Patch) (2026-05-14)](#v162--documentation-refresh-patch---2026-05-14)
 - [v1.6.1 — Documentation Update (Patch) (2026-04-20)](#v161--documentation-update-patch---2026-04-20)
 - [v1.6.0 — Advisor Tool API Catch-up (Opus 4.7) (2026-04-18)](#v160--advisor-tool-api-catch-up-opus-47---2026-04-18)
 - [v1.5.0 — Code View & Syntax Highlighting (2026-04-17)](#v150--code-view--syntax-highlighting---2026-04-17)
@@ -13,6 +14,12 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.6.2 — Documentation Refresh (Patch) - 2026-05-14
+- **Type:** Small Enhancement
+- **Summary:** Documentation-only refresh triggered by `/check-advisor-tool-updates` against Anthropic's docs since the 2026-04-22 review. The headline addition is an **explicit scope statement** added to both `docs/reference/claude-advisor-tool-updates.md` (after Source URLs) and `.claude/commands/check-advisor-tool-updates.md` (top of Step 3), so future catch-up runs only flag upstream changes that affect the advisor tool API, advisor effort behavior, or the pricing of models/features the playground actually uses or exposes. Out of scope (and now explicitly excluded): Claude Platform on AWS billing (CCUs), Claude Managed Agents pricing, unrelated server-side tool pricing (code execution, web search, web fetch, text editor, computer use, bash), and models outside the advisor tool compatibility table (Opus 4.5, Opus 4.1, Sonnet 4.5). Also captured four content updates for items that *do* affect the playground: (1) advisor tool platform availability extended — now available on Claude Platform on AWS in addition to the Claude API; (2) fast mode extended to Opus 4.7 (was Opus 4.6 only) — tracked because Opus 4.7 is the playground's advisor model and a valid executor, though the playground does not opt into fast mode; (3) `clear_thinking` per-model default nuance — the lossy `keep: {type: "thinking_turns", value: 1}` default only applies to earlier Opus/Sonnet models and all Haiku models; Opus 4.5+ and Sonnet 4.6+ default to `keep: "all"`. Added a playground-specific note that the warning is moot for all four current executors (Sonnet 4.6 / Opus 4.6 / Opus 4.7 default to `keep: "all"`; Haiku 4.5 has no extended thinking to begin with); (4) new "When to call (Anthropic's framing)" sub-section in the suggested system prompts — captures the two-timings pattern (early first call after exploratory reads, final call after writes/test outputs) and the planner-tool funnel recommendation. Bumped "Last reviewed" to 2026-05-14. Also backfilled the missing v1.6.1 entry in `docs/build/feature-backlog.md` and added v1.6.2 (F41, F42, F43, F44). Restructured the README: added a stable "Release Notes" pill to the top badge row (alongside Version, License, iBuildWith.ai, GitHub stars) and removed the prose "Most recent: vX.Y.Z" blurb from the `## Release Notes` section — the section body is now a single-sentence pointer to `release-notes.md`. Net effect: the release-notes link is more discoverable, and the version-bump checklist drops one item per release. No API-surface or pricing changes; no app code touched.
 
 ---
 

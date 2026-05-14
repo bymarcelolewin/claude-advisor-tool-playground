@@ -7,7 +7,15 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
 - Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
 
-Last reviewed: 2026-04-22
+**Scope.** This document tracks changes from the three source pages above **in the context of how they affect the Claude Advisor Tool API or this playground**, not as a general mirror of Anthropic's docs. The following are intentionally **out of scope** and should not be added here:
+
+- Pricing or billing constructs for platforms the playground doesn't use — Claude Platform on AWS (CCU billing), Claude Managed Agents, Amazon Bedrock, Google Vertex AI, Microsoft Foundry
+- Tool-specific pricing for tools the playground doesn't expose — code execution, web search, web fetch, text editor, computer use, bash
+- Models outside the advisor tool's executor/advisor compatibility table — e.g., Opus 4.5, Opus 4.1, Sonnet 4.5
+
+Overlap items stay in scope. For example, fast-mode pricing on Opus 4.7 is tracked here because Opus 4.7 is a valid advisor-tool executor and the playground's advisor model, even though the playground itself does not opt into fast mode. The test is "does it affect the advisor tool API, advisor effort behavior, or pricing of a model/feature the playground actually uses?" — not "did the source page change?"
+
+Last reviewed: 2026-05-14
 
 ---
 
@@ -17,7 +25,7 @@ Last reviewed: 2026-04-22
 - **Tool type:** `advisor_20260301`
 - **Supported executor models:** Claude Haiku 4.5, Claude Sonnet 4.6, Claude Opus 4.6, Claude Opus 4.7
 - **Supported advisor models:** Claude Opus 4.7 (only)
-- **Platform:** Claude API (Anthropic) only
+- **Platform:** Claude API (Anthropic) and Claude Platform on AWS. Not available on Amazon Bedrock, Google Vertex AI, or Microsoft Foundry.
 
 ### Model compatibility table (from Anthropic's docs)
 
@@ -195,11 +203,31 @@ Haiku 4.5 does **not** support the effort parameter. Sending `output_config.effo
 
 **Warning — keep caching consistent:** Set `caching` once and leave it for the whole conversation. Toggling it off and on mid-conversation shifts the cache prefix and causes cache misses. The playground enforces this by locking the Advisor Caching dropdown after the first successful turn.
 
-**Warning — `clear_thinking`:** `clear_thinking` with `keep` value other than `"all"` shifts the advisor's transcript each turn, causing cache misses. When extended thinking is enabled without explicit `clear_thinking` config, the API defaults to `keep: {type: "thinking_turns", value: 1}`, which triggers this. Set `keep: "all"` to preserve advisor cache stability.
+**Warning — `clear_thinking`:** `clear_thinking` with `keep` value other than `"all"` shifts the advisor's transcript each turn, causing cache misses. The default behavior is per-model:
+
+- **Opus 4.5+ and Sonnet 4.6+** default to `keep: "all"` — no cache miss issue.
+- **Earlier Opus / Sonnet models and all Haiku models** default to `keep: {type: "thinking_turns", value: 1}` — this is the case that triggers the miss.
+
+If you're on a model that defaults to the lossy behavior and you're using extended thinking, set `keep: "all"` explicitly to preserve advisor cache stability.
+
+**Note for this playground:** the warning is effectively moot for every current executor. Sonnet 4.6 / Opus 4.6 / Opus 4.7 default to `keep: "all"`. Haiku 4.5 doesn't support effort or extended thinking, so there are no thinking blocks to shift in the first place.
 
 ---
 
 ## Suggested System Prompts (from Anthropic)
+
+### When to call (Anthropic's framing)
+
+Anthropic's advisor tool docs describe two timings that drive the intelligence gain on coding and agentic tasks:
+
+1. **An early first advisor call** — after a few exploratory reads are in the transcript, before substantive work begins. The advisor sees what's there but hasn't committed to an approach yet.
+2. **A final advisor call** — after file writes and test outputs are in the transcript, before declaring done. The advisor reviews the deliverable against what was attempted.
+
+In Anthropic's internal coding evaluations, sticking to roughly two to three advisor calls per task in this shape produced the highest intelligence at near-Sonnet cost.
+
+**Funnel into planner-like tools.** If the agent exposes other planner-shaped tools (e.g., a todo-list tool), prompt the executor to call the advisor **before** those tools so the advisor's plan flows into them. Add a single sentence to the system prompt pointing at whichever planner tools the agent exposes.
+
+The three prompt blocks below operationalize this framing. Prepend them to the executor's system prompt **before any other sentence that mentions the advisor**.
 
 ### Timing Guidance (for coding tasks)
 Tells the executor when to call the advisor. On internal coding evaluations, this pattern produced the highest intelligence at near-Sonnet cost.
@@ -253,10 +281,14 @@ The advisor tool works with Anthropic's [batch API](https://docs.anthropic.com/e
 
 When extended thinking is enabled, the model generates internal "thinking" blocks before its visible response. The `clear_thinking` parameter controls whether those blocks are kept or pruned from conversation history on subsequent turns.
 
-- Default behavior: `keep: {type: "thinking_turns", value: 1}` — only keeps the most recent turn's thinking
-- This default **causes advisor cache misses** because it shifts the transcript each turn
-- Fix: Set `keep: "all"` to preserve advisor cache stability
-- Impact: Cost degradation only — advice quality is unaffected
+**Default behavior is per-model:**
+
+- **Opus 4.5+ and Sonnet 4.6+:** default is `keep: "all"` — full history retained, no advisor cache miss issue.
+- **Earlier Opus / Sonnet models and all Haiku models:** default is `keep: {type: "thinking_turns", value: 1}` — only the most recent turn's thinking is kept. This shifts the advisor's transcript each turn and causes advisor cache misses.
+
+**Fix (when on a model with the lossy default):** Set `keep: "all"` explicitly to preserve advisor cache stability. Impact of the lossy default is cost degradation only — advice quality is unaffected.
+
+**For this playground:** Sonnet 4.6 / Opus 4.6 / Opus 4.7 inherit `keep: "all"` automatically — no action needed. Haiku 4.5 doesn't use extended thinking, so the issue doesn't apply.
 
 Reference: [Context editing documentation](https://platform.claude.com/docs/en/build-with-claude/context-editing)
 
@@ -340,9 +372,9 @@ Enabling tool use adds a hidden system-prompt overhead to the first executor ite
 
 Informational only — the playground uses default (`auto`) behavior and displays the overhead as part of the baseline input token count.
 
-### Fast mode (Opus 4.6 only, beta research preview)
+### Fast mode (Opus 4.6 and Opus 4.7, beta research preview)
 
-Opus 4.6 offers a "fast mode" beta at 6× standard pricing — $30 / MTok input, $150 / MTok output. Applies across the full context window including above 200k tokens. **Not available with Batch API.** The playground does not currently expose fast mode.
+Opus 4.6 and Opus 4.7 both offer a "fast mode" beta at 6× standard pricing — $30 / MTok input, $150 / MTok output. Applies across the full context window including above 200k tokens. **Not available with Batch API** or on Claude Platform on AWS. Tracked here because Opus 4.7 is the playground's advisor model and a valid executor; the playground itself does not currently expose fast mode.
 
 ### Regional endpoint premium (non-Anthropic platforms)
 

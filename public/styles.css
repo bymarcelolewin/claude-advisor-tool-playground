@@ -2831,7 +2831,7 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
 /* ============================================================================
  * Code View modal — opened from the </> button in the top-nav.
  * Shows the exact Anthropic API call for the user's current configuration
- * in three languages (TypeScript, Python, curl). See docs/build/v1.5.0/.
+ * in three languages (TypeScript, Python, curl). See docs/build/v1.5.0-code-view-and-syntax-highlighting/.
  * ============================================================================ */
 
 .code-view-modal {
