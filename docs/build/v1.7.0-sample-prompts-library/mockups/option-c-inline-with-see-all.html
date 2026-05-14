@@ -1,0 +1,928 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>v1.7.0 Sample Prompts — Option C Mockup</title>
+<style>
+  /* App palette pulled from public/styles.css */
+  :root {
+    --bg: #0f1115;
+    --panel: #161922;
+    --border: #2a2f3d;
+    --text: #e6e8ee;
+    --muted: #8a91a3;
+    --accent: #7aa2ff;
+    --advisor: #b86bff;
+    --triggers: #20c05b;
+    --skips: #e0b25c; /* amber — matches --eval-accent / --adv-solo in the app palette */
+    --pill-bg: #1c2030;
+    --pill-hover: #243049;
+    --modal-overlay: rgba(0,0,0,0.65);
+  }
+
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0; padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-size: 14px;
+  }
+
+  /* Mockup harness */
+  .harness {
+    max-width: 920px;
+    margin: 0 auto;
+    padding: 32px 24px 80px;
+  }
+  h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+    font-weight: 600;
+  }
+  .subtitle {
+    color: var(--muted);
+    margin: 0 0 24px;
+    font-size: 13px;
+  }
+  .state-toggle {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+    padding: 6px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: fit-content;
+  }
+  .state-toggle button {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+    font-family: inherit;
+  }
+  .state-toggle button.active {
+    background: var(--pill-hover);
+    color: var(--text);
+  }
+  .scenario-note {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 6px;
+    margin-bottom: 16px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .scenario-note strong { color: var(--text); }
+
+  /* Mock chat pane (just the bottom — input + sample-prompts area) */
+  .chat-pane {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    min-height: 320px;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+    position: relative;
+  }
+  .chat-messages {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--muted);
+    font-size: 13px;
+    padding: 24px 0;
+    font-style: italic;
+  }
+  .chat-messages.has-content {
+    align-items: flex-start;
+    font-style: normal;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .msg-bubble {
+    background: #2a3550;
+    padding: 10px 14px;
+    border-radius: 12px;
+    align-self: flex-end;
+    max-width: 75%;
+    font-size: 13px;
+  }
+  .msg-bubble.assistant {
+    background: #1e2230;
+    align-self: flex-start;
+  }
+
+  /* === The new piece: sample-prompts container === */
+  .sample-prompts-area {
+    margin-bottom: 12px;
+  }
+
+  /* Empty-state full row */
+  .sample-prompts-full {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    background: rgba(122, 162, 255, 0.04);
+  }
+  .sample-prompts-full .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+  }
+  .sample-prompts-full .header-label {
+    font-size: 12px;
+    color: var(--muted);
+    font-weight: 500;
+  }
+  .sample-prompts-full .header-label .icon { margin-right: 4px; }
+  .sample-prompts-full .header-actions { display: flex; gap: 8px; }
+  .sample-prompts-full .collapse-btn {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    padding: 2px 6px;
+    cursor: pointer;
+    font-size: 13px;
+    border-radius: 4px;
+  }
+  .sample-prompts-full .collapse-btn:hover { color: var(--text); background: var(--pill-bg); }
+
+  .pill-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .prompt-pill {
+    background: var(--pill-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+    position: relative;
+  }
+  .prompt-pill:hover {
+    background: var(--pill-hover);
+    border-color: var(--accent);
+  }
+  .pill-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+  .pill-dot.triggers { background: var(--triggers); }
+  .pill-dot.skips { background: var(--skips); }
+  .see-all-pill {
+    background: transparent;
+    border: 1px dashed var(--border);
+    color: var(--accent);
+  }
+  .see-all-pill:hover {
+    background: rgba(122, 162, 255, 0.08);
+    border-color: var(--accent);
+  }
+
+  /* Collapsed single pill */
+  .sample-prompts-collapsed {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--pill-bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 6px 12px;
+    border-radius: 16px;
+    font-size: 12px;
+    cursor: pointer;
+    font-family: inherit;
+  }
+  .sample-prompts-collapsed:hover { color: var(--text); background: var(--pill-hover); }
+
+  /* Tooltip on pill hover */
+  .pill-tooltip {
+    position: absolute;
+    bottom: calc(100% + 8px);
+    left: 0;
+    background: #0a0c10;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    line-height: 1.5;
+    max-width: 360px;
+    z-index: 50;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    pointer-events: none;
+    opacity: 0;
+    transform: translateY(4px);
+    transition: opacity 0.15s, transform 0.15s;
+    white-space: normal;
+  }
+  .prompt-pill:hover .pill-tooltip {
+    opacity: 1;
+    transform: translateY(0);
+    transition-delay: 0.25s;
+  }
+  .tooltip-title { font-weight: 600; margin-bottom: 4px; }
+  .tooltip-body { color: var(--muted); }
+  .tooltip-badge {
+    display: inline-block;
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 8px;
+    margin-top: 6px;
+    color: var(--triggers);
+    background: rgba(32, 192, 91, 0.18);
+  }
+  .tooltip-badge.skips { background: rgba(224, 178, 92, 0.18); color: var(--skips); }
+
+  /* Floating chat input */
+  .chat-input-row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-end;
+  }
+  .chat-input {
+    flex: 1;
+    background: #0a0c10;
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 14px;
+    font-family: inherit;
+    min-height: 42px;
+    resize: none;
+  }
+  .chat-input:focus { outline: none; border-color: var(--accent); }
+  .send-btn {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 0 18px;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    height: 42px;
+    font-family: inherit;
+  }
+  .send-btn:hover { filter: brightness(1.1); }
+
+  /* === Option A: "See all" modal === */
+  .modal-overlay {
+    position: fixed; inset: 0;
+    background: var(--modal-overlay);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    backdrop-filter: blur(2px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    width: min(720px, 92vw);
+    height: min(640px, 85vh); /* fixed — doesn't shrink/grow with filter */
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .modal-title { margin: 0; font-size: 16px; font-weight: 600; }
+  .modal-close {
+    background: transparent;
+    color: var(--muted);
+    border: none;
+    font-size: 22px;
+    cursor: pointer;
+    padding: 0 8px;
+    line-height: 1;
+  }
+  .modal-close:hover { color: var(--text); }
+
+  .modal-filter {
+    padding: 12px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+  .filter-label {
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-right: 4px;
+  }
+  .filter-pill {
+    background: var(--pill-bg);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 6px 12px;
+    border-radius: 14px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: inherit;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .filter-pill:hover { background: var(--pill-hover); }
+  .filter-pill.active {
+    background: var(--pill-hover);
+    border-color: var(--accent);
+    color: var(--accent);
+  }
+  .filter-pill .pill-dot.skips { background: var(--skips); }
+
+  .modal-body {
+    overflow-y: auto;
+    padding: 12px 20px 16px;
+    flex: 1;
+  }
+  .prompt-card {
+    background: #1a1e2a;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: border-color 0.15s, background 0.15s;
+  }
+  .prompt-card:hover {
+    border-color: var(--border);
+    background: #1f2435;
+  }
+  .prompt-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+    gap: 10px;
+  }
+  .prompt-card-title { font-weight: 600; font-size: 13px; flex: 1; display: flex; align-items: center; gap: 8px; }
+
+  /* Complexity indicator — 3 small bars, filled count = complexity tier */
+  .complexity-meter {
+    display: inline-flex;
+    gap: 2px;
+    align-items: center;
+    cursor: help;
+    flex-shrink: 0;
+  }
+  .complexity-bar {
+    width: 4px;
+    height: 10px;
+    background: var(--border);
+    border-radius: 1px;
+  }
+  .complexity-meter[data-tier="quick"] .complexity-bar:nth-child(1) { background: var(--muted); }
+  .complexity-meter[data-tier="standard"] .complexity-bar:nth-child(-n+2) { background: var(--accent); }
+  .complexity-meter[data-tier="heavy"] .complexity-bar { background: #ff9b6b; }
+  .prompt-card-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+  .prompt-card-badge {
+    font-size: 10px;
+    padding: 2px 8px;
+    border-radius: 10px;
+    background: rgba(32, 192, 91, 0.18);
+    color: var(--triggers);
+    font-weight: 500;
+  }
+  .prompt-card-badge.skips {
+    background: rgba(224, 178, 92, 0.18);
+    color: var(--skips);
+  }
+  .insert-btn {
+    width: 22px;
+    height: 22px;
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: inherit;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    padding: 0;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .insert-btn:hover { filter: brightness(1.15); }
+  .insert-btn:active { transform: scale(0.95); }
+  .insert-btn[title]:hover::after {
+    content: attr(title);
+    position: absolute;
+    transform: translate(-50%, -130%);
+    background: #0a0c10;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    white-space: nowrap;
+    pointer-events: none;
+  }
+  .prompt-card-body {
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.5;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .prompt-card.expanded .prompt-card-body {
+    -webkit-line-clamp: unset;
+    display: block;
+  }
+  .prompt-card-hint {
+    margin-top: 6px;
+    font-size: 10px;
+    color: var(--muted);
+    font-style: italic;
+    opacity: 0.7;
+  }
+  .modal-footer {
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 11px;
+    color: var(--muted);
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* Confirm-replace mini-modal */
+  .confirm-overlay {
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,0.7);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 200;
+  }
+  .confirm-overlay.open { display: flex; }
+  .confirm-card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px 24px;
+    max-width: 420px;
+    width: 90vw;
+  }
+  .confirm-title { font-size: 15px; font-weight: 600; margin: 0 0 8px; }
+  .confirm-body { color: var(--muted); font-size: 13px; margin: 0 0 16px; line-height: 1.5; }
+  .confirm-actions { display: flex; gap: 10px; justify-content: flex-end; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text);
+    border: 1px solid var(--border);
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: var(--bg);
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  /* Footer legend */
+  .legend {
+    margin-top: 24px;
+    padding: 14px 16px;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.7;
+  }
+  .legend strong { color: var(--text); }
+  .legend code {
+    background: #0a0c10;
+    padding: 2px 6px;
+    border-radius: 4px;
+    color: var(--accent);
+    font-size: 11px;
+  }
+</style>
+</head>
+<body>
+<div class="harness">
+  <h1>v1.7.0 — Sample Prompts Library (Option C mockup)</h1>
+  <p class="subtitle">Inline empty-state pill row + collapsed single pill after first send + modal for "See all" / full-detail browsing.</p>
+
+  <div class="state-toggle">
+    <button id="state-empty" class="active">1. Empty state (first open)</button>
+    <button id="state-after-send">2. After first message</button>
+    <button id="state-modal">3. "See all" modal open</button>
+  </div>
+
+  <div id="scenario-empty" class="scenario-note">
+    <strong>Empty state.</strong> No messages yet. The full pill row is visible above the chat input. Hover any pill to preview the full prompt. Click a pill to insert it into the textarea. Click <em>+ See all</em> to open the modal.
+  </div>
+  <div id="scenario-after-send" class="scenario-note" style="display:none">
+    <strong>After first message.</strong> The pill row collapses to a single pill (💡 Sample prompts ▼) so it stays available but doesn't crowd the input. Click the pill to re-expand the row.
+  </div>
+  <div id="scenario-modal" class="scenario-note" style="display:none">
+    <strong>Full-detail modal.</strong> Opened from <em>+ See all</em> in the pill row. Filter by All / Triggers advisor / Skips advisor. Click anywhere on a card to expand the full prompt body in-place. Click the <strong>+</strong> button on a card to insert that prompt into the textarea and close the modal.
+  </div>
+
+  <!-- Mock chat pane -->
+  <div class="chat-pane">
+    <div id="chat-messages" class="chat-messages">No messages yet — try a sample prompt below to get started.</div>
+
+    <!-- The Sample Prompts area sits ABOVE the chat input -->
+    <div class="sample-prompts-area" id="prompts-area">
+      <!-- Full row (empty-state) -->
+      <div class="sample-prompts-full" id="prompts-full">
+        <div class="header">
+          <div class="header-label"><span class="icon">💡</span>Try a sample prompt to get started</div>
+          <div class="header-actions">
+            <button class="collapse-btn" id="collapse-btn" title="Collapse">▾</button>
+          </div>
+        </div>
+        <div class="pill-row" id="pill-row">
+          <!-- Pills are rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Collapsed single pill -->
+      <button class="sample-prompts-collapsed" id="prompts-collapsed" style="display:none">
+        💡 Sample prompts ▾
+      </button>
+    </div>
+
+    <div class="chat-input-row">
+      <textarea id="chat-input" class="chat-input" rows="1" placeholder="Type a message..."></textarea>
+      <button id="send-btn" class="send-btn">➤</button>
+    </div>
+  </div>
+
+  <!-- "See all" modal -->
+  <div class="modal-overlay" id="see-all-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h2 class="modal-title">💡 Sample Prompts</h2>
+        <button class="modal-close" id="modal-close">×</button>
+      </div>
+      <div class="modal-filter">
+        <span class="filter-label">Filter:</span>
+        <button class="filter-pill active" data-filter="all">All</button>
+        <button class="filter-pill" data-filter="triggers">
+          <span class="pill-dot triggers"></span>Triggers advisor
+        </button>
+        <button class="filter-pill" data-filter="skips">
+          <span class="pill-dot skips"></span>Skips advisor
+        </button>
+      </div>
+      <div class="modal-body" id="modal-body">
+        <!-- Cards rendered by JS -->
+      </div>
+      <div class="modal-footer">
+        <span>Click <strong>+</strong> to insert · click anywhere else on a card to expand the full prompt</span>
+        <span id="modal-count"></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Confirm-replace mini modal -->
+  <div class="confirm-overlay" id="confirm-overlay">
+    <div class="confirm-card">
+      <h3 class="confirm-title">Replace current message?</h3>
+      <p class="confirm-body">You have text in the chat input. Inserting this prompt will replace it. Continue?</p>
+      <div class="confirm-actions">
+        <button class="btn-ghost" id="confirm-cancel">Keep my text</button>
+        <button class="btn-primary" id="confirm-ok">Replace</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="legend">
+    <strong>UX summary:</strong><br>
+    • <strong>Inline pill row</strong> — hover a pill for a tooltip preview, click a pill to insert.<br>
+    • <strong>+ See all (N)</strong> pill → opens the modal with filter chips + full preview cards.<br>
+    • <strong>In the modal:</strong> click anywhere on a card → expands the full prompt body in-place. Click the <strong>+</strong> button → inserts the prompt and closes the modal.<br>
+    • <strong>Filter chips</strong> (All / Triggers advisor / Skips advisor) replace a free-text search — the library is small and the categories are fixed, so chips are clearer than search.<br>
+    • <strong>Color coding:</strong> <span style="color:#20c05b">green</span> = triggers advisor; <span style="color:#e0b25c">amber</span> = skips advisor (matches the app's existing <code>--eval-accent</code> / <code>--adv-solo</code> palette color, so it's on-brand). Red was considered but rejected — "skips" isn't bad, just a different category.<br>
+    • <strong>Complexity meter</strong> (3 bars to the left of each title) — directional guidance, not a real cost estimate. <span style="color:#8a91a3">▪</span> = Quick (~500–2k tokens), <span style="color:#7aa2ff">▪▪</span> = Standard (~3–8k tokens), <span style="color:#ff9b6b">▪▪▪</span> = Heavy (~10–25k tokens, ~3× in compare-all-three mode). Hover the meter for the tooltip.<br>
+    • <strong>Why not a real cost estimate?</strong> Advisor calls fire at runtime based on the executor's judgment — we can't know in advance whether the advisor will fire, how many times, or how long the outputs will be. Any single dollar figure shown here would mislead more than help.<br>
+    • <strong>Confirm-replace</strong> protects against accidental overwrites if the textarea already has text.<br>
+    • <strong>After first send</strong>, the row collapses to a single <code>💡 Sample prompts ▾</code> pill that re-expands on click.<br>
+    • <strong>▾ collapse arrow</strong> in the row header → user can manually collapse the row even before sending.<br>
+    • <strong>Schema</strong>: <code>public/sample-prompts.json</code> → <code>{ prompts: [{ title, prompt, shouldTriggerAdvisor }] }</code>.
+  </div>
+</div>
+
+<script>
+  // Seed prompts (would live in public/sample-prompts.json in the real implementation)
+  const PROMPTS = [
+    // First 5 are visible in the inline pill row: 3 triggers + 2 skips (per Q3 resolution).
+    {
+      title: "Parse ISO 8601 durations",
+      prompt: "Write a Python function `parse_iso_duration(s)` that parses an ISO 8601 duration string like `PT2H30M15S`, `P1DT12H`, or `-PT0.5S` and returns the total duration in seconds as a float. Support years, months, weeks, days, hours, minutes, seconds, fractional seconds, and negative durations. Assume 1 year = 365.25 days and 1 month = 30 days for conversion. Include at least 6 test cases covering edge cases, and explain your approach before writing the code.",
+      shouldTriggerAdvisor: true,
+      complexity: "heavy"
+    },
+    {
+      title: "Design URL shortener",
+      prompt: "Design a URL shortener service with custom aliases, per-link expiration, and click analytics. Describe: (a) the database schema with indexes, (b) the HTTP API endpoints with request/response shapes, (c) the short-code generation strategy and how you'd handle collisions, (d) how analytics events are written without slowing down redirects, and (e) one trade-off decision you made and why. Target: two-person team, ~10k redirects/day, self-hosted.",
+      shouldTriggerAdvisor: true,
+      complexity: "heavy"
+    },
+    {
+      title: "When was Rust created?",
+      prompt: "What year was the Rust programming language first publicly released, and who originally created it?",
+      shouldTriggerAdvisor: false,
+      complexity: "quick"
+    },
+    {
+      title: "Concurrent worker pool in Go",
+      prompt: "Build a concurrent worker pool in Go with graceful shutdown. It should accept jobs from a channel, run them with N workers, support a maximum in-flight limit of 10, and drain in-flight work cleanly when shutdown is signaled. Walk me through your approach before writing code.",
+      shouldTriggerAdvisor: true,
+      complexity: "standard"
+    },
+    {
+      title: "Convert 72°F to °C",
+      prompt: "Convert 72 degrees Fahrenheit to Celsius. Show the formula and the numeric answer rounded to one decimal place.",
+      shouldTriggerAdvisor: false,
+      complexity: "quick"
+    },
+    // Behind "See all":
+    {
+      title: "Refactor a callback pyramid",
+      prompt: "I have a Node.js function with deeply nested callbacks doing sequential async work (read file → parse → call API → write result). Refactor it to use async/await, explain what changed and why each change is safe, and call out one error-handling edge case I should be aware of.",
+      shouldTriggerAdvisor: true,
+      complexity: "standard"
+    },
+    {
+      title: "Capital of Australia",
+      prompt: "What is the capital city of Australia?",
+      shouldTriggerAdvisor: false,
+      complexity: "quick"
+    },
+    {
+      title: "Undo last git commit",
+      prompt: "What's the git command to undo my most recent commit while keeping my changes staged?",
+      shouldTriggerAdvisor: false,
+      complexity: "quick"
+    }
+  ];
+
+  // ---------- Helpers ----------
+  function truncate(s, n) { return s.length <= n ? s : s.slice(0, n - 1) + "…"; }
+  function $(id) { return document.getElementById(id); }
+
+  const pillRow = $("pill-row");
+  const modalBody = $("modal-body");
+  const modalCount = $("modal-count");
+  const chatInput = $("chat-input");
+  const promptsFull = $("prompts-full");
+  const promptsCollapsed = $("prompts-collapsed");
+  const chatMessages = $("chat-messages");
+
+  let currentFilter = "all"; // "all" | "triggers" | "skips"
+
+  // Render pills (empty-state row)
+  function renderPills() {
+    pillRow.innerHTML = "";
+    const featured = PROMPTS.slice(0, 5);
+    featured.forEach(p => {
+      const pill = document.createElement("button");
+      pill.className = "prompt-pill";
+      const dotClass = p.shouldTriggerAdvisor ? "triggers" : "skips";
+      pill.innerHTML = `
+        <span class="pill-dot ${dotClass}"></span>
+        ${p.title}
+        <div class="pill-tooltip">
+          <div class="tooltip-title">${p.title}</div>
+          <div class="tooltip-body">${truncate(p.prompt, 240)}</div>
+          <span class="tooltip-badge ${dotClass}">${p.shouldTriggerAdvisor ? "🟢 Triggers advisor" : "🟡 Skips advisor"}</span>
+        </div>
+      `;
+      pill.addEventListener("click", () => insertPrompt(p.prompt));
+      pillRow.appendChild(pill);
+    });
+
+    // "See all (N)" pill
+    const seeAll = document.createElement("button");
+    seeAll.className = "prompt-pill see-all-pill";
+    seeAll.innerHTML = `+ See all (${PROMPTS.length})`;
+    seeAll.addEventListener("click", () => openModal());
+    pillRow.appendChild(seeAll);
+  }
+
+  // Render modal cards
+  function renderModalCards() {
+    modalBody.innerHTML = "";
+    const filtered = PROMPTS.filter(p => {
+      if (currentFilter === "triggers") return p.shouldTriggerAdvisor;
+      if (currentFilter === "skips") return !p.shouldTriggerAdvisor;
+      return true;
+    });
+    filtered.forEach(p => {
+      const card = document.createElement("div");
+      card.className = "prompt-card";
+      const badgeClass = p.shouldTriggerAdvisor ? "" : "skips";
+      const badgeLabel = p.shouldTriggerAdvisor ? "🟢 Triggers advisor" : "🟡 Skips advisor";
+      const tier = p.complexity || "standard";
+      const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+      const tierTooltip = {
+        quick: "Quick — single-step, low token spend (~500–2k tokens total)",
+        standard: "Standard — focused task, moderate token spend (~3–8k tokens total)",
+        heavy: "Heavy — multi-part task, high token spend (~10–25k tokens total). 3× this in compare-all-three mode."
+      }[tier];
+      card.innerHTML = `
+        <div class="prompt-card-header">
+          <div class="prompt-card-title">
+            <span class="complexity-meter" data-tier="${tier}" title="${tierTooltip}">
+              <span class="complexity-bar"></span>
+              <span class="complexity-bar"></span>
+              <span class="complexity-bar"></span>
+            </span>
+            ${p.title}
+          </div>
+          <div class="prompt-card-actions">
+            <span class="prompt-card-badge ${badgeClass}">${badgeLabel}</span>
+            <button class="insert-btn" title="Insert into chat">+</button>
+          </div>
+        </div>
+        <div class="prompt-card-body">${p.prompt}</div>
+        <div class="prompt-card-hint">${tierLabel} complexity · click anywhere to expand · click + to insert</div>
+      `;
+      // Click + button to insert
+      card.querySelector(".insert-btn").addEventListener("click", e => {
+        e.stopPropagation();
+        insertPrompt(p.prompt, true);
+      });
+      // Click anywhere else on the card to expand/collapse the body
+      card.addEventListener("click", () => {
+        card.classList.toggle("expanded");
+      });
+      modalBody.appendChild(card);
+    });
+    modalCount.textContent = `${filtered.length} of ${PROMPTS.length} prompt${PROMPTS.length === 1 ? "" : "s"}`;
+  }
+
+  // Wire up filter pills
+  document.querySelectorAll(".filter-pill").forEach(btn => {
+    btn.addEventListener("click", () => {
+      document.querySelectorAll(".filter-pill").forEach(b => b.classList.remove("active"));
+      btn.classList.add("active");
+      currentFilter = btn.dataset.filter;
+      renderModalCards();
+    });
+  });
+
+  // Insert prompt into textarea (with confirm if non-empty)
+  function insertPrompt(text, fromModal = false) {
+    const current = chatInput.value.trim();
+    if (current.length > 0) {
+      // Confirm replace
+      pendingInsert = { text, fromModal };
+      $("confirm-overlay").classList.add("open");
+      return;
+    }
+    doInsert(text, fromModal);
+  }
+  function doInsert(text, fromModal) {
+    chatInput.value = text;
+    chatInput.focus();
+    if (fromModal) closeModal();
+  }
+  let pendingInsert = null;
+  $("confirm-ok").addEventListener("click", () => {
+    if (pendingInsert) doInsert(pendingInsert.text, pendingInsert.fromModal);
+    pendingInsert = null;
+    $("confirm-overlay").classList.remove("open");
+  });
+  $("confirm-cancel").addEventListener("click", () => {
+    pendingInsert = null;
+    $("confirm-overlay").classList.remove("open");
+  });
+
+  // Modal open/close
+  function openModal() {
+    renderModalCards();
+    $("see-all-modal").classList.add("open");
+  }
+  function closeModal() {
+    $("see-all-modal").classList.remove("open");
+  }
+  $("modal-close").addEventListener("click", closeModal);
+  $("see-all-modal").addEventListener("click", e => {
+    if (e.target.id === "see-all-modal") closeModal();
+  });
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape") {
+      closeModal();
+      $("confirm-overlay").classList.remove("open");
+    }
+  });
+
+  // Collapse / re-expand
+  $("collapse-btn").addEventListener("click", () => {
+    promptsFull.style.display = "none";
+    promptsCollapsed.style.display = "inline-flex";
+  });
+  promptsCollapsed.addEventListener("click", () => {
+    promptsFull.style.display = "";
+    promptsCollapsed.style.display = "none";
+  });
+
+  // Send-button mock — just demonstrates the "after send" state
+  $("send-btn").addEventListener("click", () => {
+    const text = chatInput.value.trim();
+    if (!text) return;
+    setState("after-send");
+    chatMessages.classList.add("has-content");
+    chatMessages.innerHTML = "";
+    const userMsg = document.createElement("div");
+    userMsg.className = "msg-bubble";
+    userMsg.textContent = truncate(text, 200);
+    chatMessages.appendChild(userMsg);
+    const assistantMsg = document.createElement("div");
+    assistantMsg.className = "msg-bubble assistant";
+    assistantMsg.textContent = "(Mock response — this is a mockup, not a real chat.)";
+    chatMessages.appendChild(assistantMsg);
+    chatInput.value = "";
+  });
+
+  // State toggle (top buttons for navigating mockup scenarios)
+  function setState(name) {
+    ["empty", "after-send", "modal"].forEach(s => {
+      $("state-" + s).classList.toggle("active", s === name);
+      const note = $("scenario-" + s);
+      if (note) note.style.display = (s === name) ? "" : "none";
+    });
+    if (name === "empty") {
+      promptsFull.style.display = "";
+      promptsCollapsed.style.display = "none";
+      chatMessages.classList.remove("has-content");
+      chatMessages.textContent = "No messages yet — try a sample prompt below to get started.";
+      closeModal();
+    } else if (name === "after-send") {
+      promptsFull.style.display = "none";
+      promptsCollapsed.style.display = "inline-flex";
+      closeModal();
+    } else if (name === "modal") {
+      promptsFull.style.display = "";
+      promptsCollapsed.style.display = "none";
+      openModal();
+    }
+  }
+  $("state-empty").addEventListener("click", () => setState("empty"));
+  $("state-after-send").addEventListener("click", () => setState("after-send"));
+  $("state-modal").addEventListener("click", () => setState("modal"));
+
+  // Initial render
+  renderPills();
+  renderModalCards();
+</script>
+</body>
+</html>

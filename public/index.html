@@ -144,11 +144,11 @@
             <div class="setting full">
               <label for="eval-provider">
                 Evaluator provider
-                <span class="setting-hint">Anthropic uses <code>claude-opus-4-7</code> at <code>high</code> effort (the API default). OpenAI uses <code>gpt-5.4</code> at its default reasoning level. Evaluator effort is fixed — the Config Models <strong>Effort</strong> setting applies to the executor only, not to the judge.</span>
+                <span class="setting-hint">Anthropic uses <code>claude-opus-4-7</code> at <code>high</code> effort (the API default). OpenAI uses <code>gpt-5.5</code> at its default reasoning level. Evaluator effort is fixed — the Config Models <strong>Effort</strong> setting applies to the executor only, not to the judge.</span>
               </label>
               <select id="eval-provider">
                 <option value="anthropic" selected>Anthropic · claude-opus-4-7</option>
-                <option value="openai">OpenAI · gpt-5.4</option>
+                <option value="openai">OpenAI · gpt-5.5</option>
               </select>
             </div>
 
@@ -189,7 +189,7 @@
             <strong>Security:</strong> this server binds to <code>127.0.0.1</code> only. Do not expose it on a network. Your API keys are sent from this page to the local backend and forwarded to Anthropic or OpenAI — they are never logged.
           </div>
           <div class="settings-notice">
-            <strong>Cost estimates:</strong> all est. cost values in the trace pane use public list prices (Haiku 4.5 $1/$5, Sonnet 4.6 $3/$15, Opus 4.6 $5/$25, Opus 4.7 $5/$25, gpt-5.4 ~$5/$15 per MTok in/out; <code>cache_r</code> ≈ 10% of input; <code>cache_w</code> ≈ 125% of input). Approximate — verify against current pricing. Prices are hardcoded in <code>public/app.js</code>. <strong>Note:</strong> Opus 4.7 uses a new tokenizer that may use up to ~35% more tokens for the same text — effective cost can be higher than the per-MTok rate suggests.
+            <strong>Cost estimates:</strong> all est. cost values in the trace pane use public list prices (Haiku 4.5 $1/$5, Sonnet 4.6 $3/$15, Opus 4.6 $5/$25, Opus 4.7 $5/$25, gpt-5.5 $5/$30 per MTok in/out; <code>cache_r</code> ≈ 10% of input; <code>cache_w</code> ≈ 125% of input). Approximate — verify against current pricing. Prices are hardcoded in <code>public/app.js</code>. <strong>Note:</strong> Opus 4.7 uses a new tokenizer that may use up to ~35% more tokens for the same text — effective cost can be higher than the per-MTok rate suggests.
           </div>
           <div class="settings-notice settings-notice-action">
             <div>
@@ -282,17 +282,45 @@
         </div>
         <div id="messages"></div>
         <form id="chat-form">
-          <textarea
-            id="user-input"
-            rows="1"
-            placeholder="Type a message… (Shift+Enter for newline)"
-          ></textarea>
-          <button type="submit" id="send" title="Send message" aria-label="Send">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-              <path d="M12 19V5"></path>
-              <path d="M5 12l7-7 7 7"></path>
-            </svg>
-          </button>
+          <!-- Sample Prompts (v1.7.0) — rendered dynamically by app.js -->
+          <div class="sample-prompts-area hidden" id="sample-prompts-area">
+            <div class="sample-prompts-full" id="sp-full">
+              <div class="sp-header">
+                <span class="sp-header-label">
+                  <span class="sp-icon">💡</span>Try a sample prompt to get started
+                </span>
+                <button
+                  type="button"
+                  class="sp-collapse-btn"
+                  id="sp-collapse-btn"
+                  title="Hide sample prompts"
+                  aria-label="Hide sample prompts"
+                >▾</button>
+              </div>
+              <div class="sp-pill-row" id="sp-pill-row"></div>
+            </div>
+            <button
+              type="button"
+              class="sp-collapsed-pill"
+              id="sp-collapsed-pill"
+              style="display:none"
+              aria-label="Show sample prompts"
+            >💡 Sample prompts ▾</button>
+          </div>
+
+          <div class="chat-input-row">
+            <textarea
+              id="user-input"
+              rows="1"
+              placeholder="Type a message… (Shift+Enter for newline)"
+            ></textarea>
+            <button type="submit" id="send" title="Send message" aria-label="Send">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M12 19V5"></path>
+                <path d="M5 12l7-7 7 7"></path>
+              </svg>
+            </button>
+          </div>
         </form>
       </section>
 
@@ -458,11 +486,8 @@
 
             <!-- Step 3: Try a prompt (always shown) -->
             <div class="welcome-step" id="welcome-step-prompts">
-              <p class="welcome-step-label"><span class="welcome-step-num" id="welcome-step-prompts-num">3</span> Try one of these prompts <span class="welcome-step-sublabel">(both trigger the advisor)</span></p>
-              <ul class="welcome-list welcome-list-small">
-                <li><em>"Write a Python function to parse ISO 8601 duration strings, with 6 test cases. Explain your approach first."</em></li>
-                <li><em>"Design a URL shortener with custom aliases, per-link expiration, and click analytics. Describe schema, API, and trade-offs."</em></li>
-              </ul>
+              <p class="welcome-step-label"><span class="welcome-step-num" id="welcome-step-prompts-num">3</span> Try a sample prompt</p>
+              <p class="welcome-body welcome-step-body">Click any of the suggested prompts in the row above the chat input to try one — they're tagged <strong>🟢 (triggers advisor)</strong> or <strong>🟡 (skips advisor)</strong>. The <strong>+ See all</strong> pill opens the full library where you can filter by category and read the full prompt before inserting.</p>
             </div>
 
             <p class="welcome-footnote">You can reopen this welcome anytime from the Notices &amp; Disclaimers section in Settings.</p>
@@ -481,6 +506,60 @@
               <button type="button" class="btn-ghost" id="welcome-prev">Back</button>
               <button type="button" class="btn-primary" id="welcome-next">Next</button>
             </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Sample Prompts See-all modal (v1.7.0) -->
+    <div
+      id="sp-modal-overlay"
+      class="sp-modal-overlay"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="sp-modal-title"
+    >
+      <div class="sp-modal-card">
+        <div class="sp-modal-header">
+          <h2 class="sp-modal-title" id="sp-modal-title">💡 Sample Prompts</h2>
+          <button type="button" class="sp-modal-close" id="sp-modal-close" aria-label="Close">×</button>
+        </div>
+        <div class="sp-modal-filter">
+          <span class="sp-filter-label">Filter:</span>
+          <button type="button" class="sp-filter-pill active" data-sp-filter="all">All</button>
+          <button type="button" class="sp-filter-pill" data-sp-filter="triggers">
+            <span class="sp-pill-dot triggers"></span>Triggers advisor
+          </button>
+          <button type="button" class="sp-filter-pill" data-sp-filter="skips">
+            <span class="sp-pill-dot skips"></span>Skips advisor
+          </button>
+        </div>
+        <div class="sp-modal-body" id="sp-modal-body"></div>
+        <div class="sp-modal-footer">
+          <div class="sp-modal-footer-row">
+            <span>Click <strong>+</strong> to insert · click anywhere else on a card to expand the full prompt</span>
+            <span id="sp-modal-count"></span>
+          </div>
+          <div class="sp-modal-footer-row sp-complexity-legend">
+            <span class="sp-legend-prefix">Complexity:</span>
+            <span class="sp-legend-item">
+              <span class="sp-complexity-meter" data-tier="quick">
+                <span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span>
+              </span>
+              Quick <span class="sp-legend-range">~500–2k tokens</span>
+            </span>
+            <span class="sp-legend-item">
+              <span class="sp-complexity-meter" data-tier="standard">
+                <span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span>
+              </span>
+              Standard <span class="sp-legend-range">~3–8k</span>
+            </span>
+            <span class="sp-legend-item">
+              <span class="sp-complexity-meter" data-tier="heavy">
+                <span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span><span class="sp-complexity-bar"></span>
+              </span>
+              Heavy <span class="sp-legend-range">~10–25k (3× in compare-all-three)</span>
+            </span>
           </div>
         </div>
       </div>

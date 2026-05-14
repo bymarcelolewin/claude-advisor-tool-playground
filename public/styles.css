@@ -21,6 +21,10 @@
   --danger: #ff6b6b;
   --danger-bg: rgba(255, 107, 107, 0.10);
 
+  /* Sample-prompts categorization (v1.7.0) */
+  --triggers: #20c05b; /* green — prompt expected to trigger advisor */
+  --skips: #e0b25c;    /* amber — prompt expected to skip advisor (matches --eval-accent) */
+
   --mono: ui-monospace, SFMono-Regular, Menlo, monospace;
 
   /* Turn wrapper — subtle teal tint used in both chat and trace to visually
@@ -3121,3 +3125,436 @@ table.eval-scores tr.branch-adv-solo td.branch-col .branch-name { color: var(--a
 .code-view-footer a:hover {
   text-decoration: underline;
 }
+
+/* ============================================================================
+ * Sample Prompts (v1.7.0)
+ * Inline pill row above the chat input + "See all" modal for the full library.
+ * See docs/build/v1.7.0-sample-prompts-library/ for design details.
+ * ============================================================================ */
+
+/* The chat form is restructured to flex-direction: column so that the
+   sample-prompts area can sit visually grouped with the input row inside
+   the same floating container. */
+#chat-form {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+/* The original textarea + send button live inside this row so the existing
+   single-row layout still applies inside the new column form. */
+.chat-input-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+/* Sample-prompts area — wrapper for the full row and the collapsed pill. */
+.sample-prompts-area {
+  display: flex;
+  flex-direction: column;
+}
+.sample-prompts-area.hidden { display: none; }
+
+/* Empty-state full row */
+.sample-prompts-full {
+  background: rgba(122, 162, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+}
+.sample-prompts-full .sp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.sample-prompts-full .sp-header-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.sample-prompts-full .sp-header-label .sp-icon { margin-right: 4px; }
+.sp-collapse-btn {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  padding: 2px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 4px;
+  font-family: inherit;
+}
+.sp-collapse-btn:hover { color: var(--text); background: rgba(255, 255, 255, 0.04); }
+
+.sp-pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.sp-pill {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 11px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+  position: relative;
+}
+.sp-pill:hover,
+.sp-pill:focus-visible {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  outline: none;
+}
+
+.sp-pill-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sp-pill-dot.triggers { background: var(--triggers); }
+.sp-pill-dot.skips { background: var(--skips); }
+
+/* See-all pill — dashed, no colored dot */
+.sp-see-all-pill {
+  background: transparent;
+  border: 1px dashed var(--border);
+  color: var(--accent);
+}
+.sp-see-all-pill:hover,
+.sp-see-all-pill:focus-visible {
+  background: rgba(122, 162, 255, 0.08);
+  border-color: var(--accent);
+}
+
+/* Tooltip on pill hover/focus */
+.sp-tooltip {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  background: #0a0c10;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 9px 11px;
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+  max-width: 360px;
+  z-index: 50;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 0.15s, transform 0.15s;
+  white-space: normal;
+  text-align: left;
+  font-weight: normal;
+}
+.sp-pill:hover .sp-tooltip,
+.sp-pill:focus-visible .sp-tooltip {
+  opacity: 1;
+  transform: translateY(0);
+  transition-delay: 0.25s;
+}
+.sp-tooltip-title { font-weight: 600; margin-bottom: 4px; }
+.sp-tooltip-body { color: var(--muted); }
+.sp-tooltip-badge {
+  display: inline-block;
+  font-size: 10px;
+  padding: 2px 7px;
+  border-radius: 8px;
+  margin-top: 6px;
+  background: rgba(32, 192, 91, 0.18);
+  color: var(--triggers);
+}
+.sp-tooltip-badge.skips { background: rgba(224, 178, 92, 0.18); color: var(--skips); }
+
+/* Tooltip footer — badge + complexity meter side-by-side, wraps on tight widths */
+.sp-tooltip-footer {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.sp-tooltip-complexity {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--muted);
+}
+.sp-tooltip-tier-text {
+  white-space: nowrap;
+}
+
+/* Collapsed single pill (shown after first send) */
+.sp-collapsed-pill {
+  align-self: flex-start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--muted);
+  padding: 5px 11px;
+  border-radius: 16px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: inherit;
+}
+.sp-collapsed-pill:hover,
+.sp-collapsed-pill:focus-visible {
+  color: var(--text);
+  background: var(--panel-3);
+  outline: none;
+}
+
+/* ----------------------------- See-all modal ----------------------------- */
+
+.sp-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  display: none;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(2px);
+}
+.sp-modal-overlay.open { display: flex; }
+
+.sp-modal-card {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: min(720px, 92vw);
+  height: min(640px, 85vh); /* fixed — doesn't shrink/grow with filter */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.sp-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 18px;
+  border-bottom: 1px solid var(--border);
+}
+.sp-modal-title { margin: 0; font-size: 15px; font-weight: 600; }
+.sp-modal-close {
+  background: transparent;
+  color: var(--muted);
+  border: none;
+  font-size: 22px;
+  cursor: pointer;
+  padding: 0 6px;
+  line-height: 1;
+  font-family: inherit;
+}
+.sp-modal-close:hover { color: var(--text); }
+
+.sp-modal-filter {
+  padding: 10px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.sp-filter-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 4px;
+}
+.sp-filter-pill {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 5px 11px;
+  border-radius: 14px;
+  font-size: 12px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-family: inherit;
+  transition: background 0.15s, border-color 0.15s;
+}
+.sp-filter-pill:hover { background: var(--panel-3); }
+.sp-filter-pill.active {
+  background: var(--panel-3);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.sp-filter-pill .sp-pill-dot.skips { background: var(--skips); }
+
+.sp-modal-body {
+  overflow-y: auto;
+  padding: 12px 18px 14px;
+  flex: 1;
+}
+
+/* Prompt cards inside the modal */
+.sp-card {
+  background: var(--panel-2);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 13px;
+  margin-bottom: 9px;
+  cursor: zoom-in;
+  transition: border-color 0.15s, background 0.15s;
+}
+.sp-card.expanded { cursor: zoom-out; }
+.sp-card:hover {
+  border-color: var(--accent);
+  background: var(--panel-3);
+}
+.sp-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  gap: 10px;
+}
+.sp-card-title {
+  font-weight: 600;
+  font-size: 13px;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sp-card-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.sp-card-badge {
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 10px;
+  background: rgba(32, 192, 91, 0.18);
+  color: var(--triggers);
+  font-weight: 500;
+}
+.sp-card-badge.skips {
+  background: rgba(224, 178, 92, 0.18);
+  color: var(--skips);
+}
+
+.sp-insert-btn {
+  width: 22px;
+  height: 22px;
+  background: var(--accent);
+  color: var(--bg);
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding: 0;
+  transition: filter 0.15s, transform 0.05s;
+}
+.sp-insert-btn:hover { filter: brightness(1.15); }
+.sp-insert-btn:active { transform: scale(0.95); }
+
+.sp-card-body {
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+.sp-card.expanded .sp-card-body {
+  -webkit-line-clamp: unset;
+  display: block;
+}
+.sp-card-hint {
+  margin-top: 6px;
+  font-size: 10px;
+  color: var(--muted);
+  font-style: italic;
+  opacity: 0.7;
+}
+
+.sp-modal-footer {
+  padding: 10px 18px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--muted);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sp-modal-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.sp-complexity-legend {
+  gap: 12px;
+}
+.sp-legend-prefix {
+  font-weight: 500;
+  color: var(--text);
+}
+.sp-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+.sp-legend-hint {
+  margin-left: auto;
+  font-style: italic;
+  opacity: 0.75;
+}
+.sp-legend-range {
+  opacity: 0.75;
+  font-size: 10px;
+  margin-left: 1px;
+}
+
+/* Complexity meter — 3 small bars to the left of the prompt title.
+   Used in the modal cards (and in the footer legend).
+   Cursor stays as default — the meaning is shown in always-visible text
+   (card hint line + footer legend) so we don't need a help cursor that
+   promises a slow native title tooltip. */
+.sp-complexity-meter {
+  display: inline-flex;
+  gap: 2px;
+  align-items: center;
+  flex-shrink: 0;
+}
+.sp-complexity-bar {
+  width: 4px;
+  height: 10px;
+  background: var(--border);
+  border-radius: 1px;
+}
+.sp-complexity-meter[data-tier="quick"]    .sp-complexity-bar:nth-child(1) { background: var(--muted); }
+.sp-complexity-meter[data-tier="standard"] .sp-complexity-bar:nth-child(-n+2) { background: var(--accent); }
+.sp-complexity-meter[data-tier="heavy"]    .sp-complexity-bar { background: #ff9b6b; }

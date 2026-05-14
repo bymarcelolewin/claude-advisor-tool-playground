@@ -114,8 +114,8 @@ const PRICES = {
   "claude-sonnet-4-6":         { in: 3.0, out: 15.0 },
   "claude-opus-4-6":           { in: 5.0, out: 25.0 },
   "claude-opus-4-7":           { in: 5.0, out: 25.0 },
-  // OpenAI prices below are rough estimates — update as needed.
-  "gpt-5.4":                   { in: 5.0, out: 15.0 },
+  // OpenAI prices — verified against https://developers.openai.com/api/docs/pricing
+  "gpt-5.5":                   { in: 5.0, out: 30.0 },
 };
 const CACHE_READ_MULT = 0.1;
 const CACHE_WRITE_MULT = 1.25;
@@ -534,9 +534,15 @@ document.addEventListener("keydown", (e) => {
 // prompt before embedding it in a snippet. The sentinels are inert HTML
 // comments to Anthropic, but they're noise in user-facing code — they only
 // matter to this app's compare-mode `stripAdvisorOnly()` server logic.
-// Content inside AND outside the sentinels is preserved; only the markers go.
+// Content inside AND outside the sentinels is preserved; the markers and the
+// newline immediately after each marker are removed so the surrounding lines
+// join cleanly (no blank-line gap where a sentinel used to be).
 function stripAdvisorSentinels(text) {
-  return text.replace(/<!--\s*\/?advisor:only\s*-->/g, "").trim();
+  return text
+    .replace(/<!--\s*\/?advisor:only\s*-->[ \t]*\n?/g, "")
+    .replace(/\n+/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
 }
 
 function snapshotCodeViewSettings() {
@@ -1928,6 +1934,11 @@ async function send(userText) {
     setExecutorLocked(true);
     setAdvisorLocked(true);
     setCachingLocked(true);
+    // v1.7.0 — collapse the sample-prompts row once the conversation starts.
+    // It re-expands on New Chat (see the reset handler below).
+    if (typeof setSamplePromptsCollapsed === "function") {
+      setSamplePromptsCollapsed(true);
+    }
   }
 
   // Bump turn counter at the start so chat and trace share the same number.
@@ -2493,6 +2504,10 @@ resetBtn.addEventListener("click", async () => {
   setExecutorLocked(false);
   setAdvisorLocked(false);
   setCachingLocked(false);
+  // v1.7.0 — re-expand the sample-prompts row on New Chat.
+  if (typeof setSamplePromptsCollapsed === "function") {
+    setSamplePromptsCollapsed(false);
+  }
   inputEl.focus();
 });
 
@@ -2508,7 +2523,7 @@ inputEl.focus();
 // ============================================================================
 // Welcome slideshow modal
 // ============================================================================
-const WELCOME_SEEN_KEY = "advisor-playground-welcome-seen-v1";
+const WELCOME_SEEN_KEY = "advisor-playground-welcome-seen-v2";
 const welcomeModalEl = $("#welcome-modal");
 const welcomeSlideEls = welcomeModalEl.querySelectorAll(".welcome-slide");
 const welcomePrevBtn = $("#welcome-prev");
@@ -2664,3 +2679,331 @@ if (!welcomeSeen) {
   // Welcome was previously dismissed but key is missing — open settings directly.
   openSettings();
 }
+
+// ============================================================================
+// Sample Prompts (v1.7.0)
+// ----------------------------------------------------------------------------
+// Curated library of example prompts surfaced as inline pills above the chat
+// input, with a "See all" modal for full browsing. Data lives in
+// public/sample-prompts.json and is fetched once on load. If the fetch or
+// schema validation fails, the feature degrades silently — the chat input
+// remains fully functional without it.
+// ============================================================================
+
+let samplePrompts = [];
+let samplePromptsCollapsed = false;
+let onSamplePromptsLoaded = null; // set later by the renderer wiring
+
+const VALID_COMPLEXITY = new Set(["quick", "standard", "heavy"]);
+
+async function loadSamplePrompts() {
+  try {
+    const r = await fetch("/sample-prompts.json");
+    if (!r.ok) {
+      console.warn(`[sample-prompts] fetch returned ${r.status}`);
+      return;
+    }
+    const data = await r.json();
+    if (!data || !Array.isArray(data.prompts)) {
+      console.warn("[sample-prompts] malformed JSON — missing 'prompts' array");
+      return;
+    }
+    samplePrompts = data.prompts.filter((p) => {
+      if (
+        !p ||
+        typeof p.title !== "string" ||
+        typeof p.prompt !== "string" ||
+        typeof p.shouldTriggerAdvisor !== "boolean"
+      ) {
+        console.warn("[sample-prompts] skipping malformed entry:", p);
+        return false;
+      }
+      if (!VALID_COMPLEXITY.has(p.complexity)) {
+        p.complexity = "standard";
+      }
+      return true;
+    });
+    if (typeof onSamplePromptsLoaded === "function") {
+      onSamplePromptsLoaded();
+    }
+  } catch (e) {
+    console.warn("[sample-prompts] fetch failed:", e);
+  }
+}
+
+// ----- DOM refs ------------------------------------------------------------
+const spAreaEl = $("#sample-prompts-area");
+const spFullEl = $("#sp-full");
+const spPillRowEl = $("#sp-pill-row");
+const spCollapseBtn = $("#sp-collapse-btn");
+const spCollapsedPillEl = $("#sp-collapsed-pill");
+const spModalOverlayEl = $("#sp-modal-overlay");
+const spModalCloseBtn = $("#sp-modal-close");
+const spModalBodyEl = $("#sp-modal-body");
+const spModalCountEl = $("#sp-modal-count");
+const spFilterPillEls = document.querySelectorAll(".sp-filter-pill");
+
+let spCurrentFilter = "all"; // "all" | "triggers" | "skips"
+
+// ----- Render: inline pill row --------------------------------------------
+const FEATURED_PILL_COUNT = 5;
+const TOOLTIP_BODY_PREVIEW_CHARS = 240;
+
+function truncatePromptBody(s, n) {
+  return s.length <= n ? s : s.slice(0, n - 1) + "…";
+}
+
+function renderPillRow() {
+  spPillRowEl.innerHTML = "";
+  if (samplePrompts.length === 0) {
+    spAreaEl.classList.add("hidden");
+    return;
+  }
+  spAreaEl.classList.remove("hidden");
+
+  const featured = samplePrompts.slice(0, FEATURED_PILL_COUNT);
+  featured.forEach((p) => {
+    const pill = document.createElement("button");
+    pill.type = "button";
+    pill.className = "sp-pill";
+    const dotClass = p.shouldTriggerAdvisor ? "triggers" : "skips";
+
+    const dot = document.createElement("span");
+    dot.className = `sp-pill-dot ${dotClass}`;
+    pill.appendChild(dot);
+
+    // Title via textContent — never innerHTML, even though our own JSON is trusted.
+    const titleNode = document.createTextNode(p.title);
+    pill.appendChild(titleNode);
+
+    // Tooltip
+    const tip = document.createElement("div");
+    tip.className = "sp-tooltip";
+    const tipTitle = document.createElement("div");
+    tipTitle.className = "sp-tooltip-title";
+    tipTitle.textContent = p.title;
+    const tipBody = document.createElement("div");
+    tipBody.className = "sp-tooltip-body";
+    tipBody.textContent = truncatePromptBody(p.prompt, TOOLTIP_BODY_PREVIEW_CHARS);
+
+    // Footer row: triggers/skips badge + complexity meter side-by-side
+    const tipFooter = document.createElement("div");
+    tipFooter.className = "sp-tooltip-footer";
+
+    const tipBadge = document.createElement("span");
+    tipBadge.className = `sp-tooltip-badge ${dotClass}`;
+    tipBadge.textContent = p.shouldTriggerAdvisor
+      ? "🟢 Triggers advisor"
+      : "🟡 Skips advisor";
+
+    const tier = VALID_COMPLEXITY.has(p.complexity) ? p.complexity : "standard";
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const tipComplexity = document.createElement("span");
+    tipComplexity.className = "sp-tooltip-complexity";
+    const tipMeter = document.createElement("span");
+    tipMeter.className = "sp-complexity-meter";
+    tipMeter.dataset.tier = tier;
+    for (let i = 0; i < 3; i++) {
+      const bar = document.createElement("span");
+      bar.className = "sp-complexity-bar";
+      tipMeter.appendChild(bar);
+    }
+    tipComplexity.appendChild(tipMeter);
+    const tipTierText = document.createElement("span");
+    tipTierText.className = "sp-tooltip-tier-text";
+    tipTierText.textContent = `${tierLabel} (${SP_COMPLEXITY_RANGE[tier]})`;
+    tipComplexity.appendChild(tipTierText);
+
+    tipFooter.appendChild(tipBadge);
+    tipFooter.appendChild(tipComplexity);
+
+    tip.appendChild(tipTitle);
+    tip.appendChild(tipBody);
+    tip.appendChild(tipFooter);
+    pill.appendChild(tip);
+
+    pill.addEventListener("click", () => insertSamplePrompt(p.prompt));
+    spPillRowEl.appendChild(pill);
+  });
+
+  // "+ See all (N)" pill
+  const seeAll = document.createElement("button");
+  seeAll.type = "button";
+  seeAll.className = "sp-pill sp-see-all-pill";
+  seeAll.textContent = `+ See all (${samplePrompts.length})`;
+  seeAll.addEventListener("click", () => openSeeAllModal());
+  spPillRowEl.appendChild(seeAll);
+}
+
+// ----- Insert prompt + confirm-replace -------------------------------------
+async function insertSamplePrompt(text, { fromModal = false } = {}) {
+  const current = inputEl.value.trim();
+  if (current.length > 0) {
+    const ok = await showConfirm({
+      title: "Replace current message?",
+      body: "You have text in the chat input. Inserting this prompt will replace it. Continue?",
+      okLabel: "Replace",
+      cancelLabel: "Keep my text",
+      okVariant: "primary",
+    });
+    if (!ok) return;
+  }
+  inputEl.value = text;
+  // Trigger the existing auto-grow handler.
+  inputEl.dispatchEvent(new Event("input", { bubbles: true }));
+  inputEl.focus();
+  if (fromModal) closeSeeAllModal();
+}
+
+// ----- Collapse / re-expand ------------------------------------------------
+function setSamplePromptsCollapsed(collapsed) {
+  samplePromptsCollapsed = collapsed;
+  if (collapsed) {
+    spFullEl.style.display = "none";
+    spCollapsedPillEl.style.display = "inline-flex";
+  } else {
+    spFullEl.style.display = "";
+    spCollapsedPillEl.style.display = "none";
+  }
+}
+
+spCollapseBtn.addEventListener("click", () => setSamplePromptsCollapsed(true));
+spCollapsedPillEl.addEventListener("click", () => setSamplePromptsCollapsed(false));
+
+// ----- See-all modal -------------------------------------------------------
+const SP_COMPLEXITY_TOOLTIP = {
+  quick: "Quick — single-step, low token spend (~500–2k tokens total)",
+  standard: "Standard — focused task, moderate token spend (~3–8k tokens total)",
+  heavy:
+    "Heavy — multi-part task, high token spend (~10–25k tokens total). 3× this in compare-all-three mode.",
+};
+
+const SP_COMPLEXITY_RANGE = {
+  quick: "~500–2k tokens",
+  standard: "~3–8k tokens",
+  heavy: "~10–25k tokens — 3× in compare-all-three",
+};
+
+function renderModalCards() {
+  spModalBodyEl.innerHTML = "";
+  const filtered = samplePrompts.filter((p) => {
+    if (spCurrentFilter === "triggers") return p.shouldTriggerAdvisor;
+    if (spCurrentFilter === "skips") return !p.shouldTriggerAdvisor;
+    return true;
+  });
+
+  filtered.forEach((p) => {
+    const tier = VALID_COMPLEXITY.has(p.complexity) ? p.complexity : "standard";
+    const tierLabel = tier.charAt(0).toUpperCase() + tier.slice(1);
+    const dotClass = p.shouldTriggerAdvisor ? "triggers" : "skips";
+
+    const card = document.createElement("div");
+    card.className = "sp-card";
+
+    const header = document.createElement("div");
+    header.className = "sp-card-header";
+
+    const titleEl = document.createElement("div");
+    titleEl.className = "sp-card-title";
+
+    const meter = document.createElement("span");
+    meter.className = "sp-complexity-meter";
+    meter.dataset.tier = tier;
+    meter.title = SP_COMPLEXITY_TOOLTIP[tier];
+    for (let i = 0; i < 3; i++) {
+      const bar = document.createElement("span");
+      bar.className = "sp-complexity-bar";
+      meter.appendChild(bar);
+    }
+    titleEl.appendChild(meter);
+    titleEl.appendChild(document.createTextNode(p.title));
+
+    const actions = document.createElement("div");
+    actions.className = "sp-card-actions";
+
+    const badge = document.createElement("span");
+    badge.className = `sp-card-badge ${dotClass}`;
+    badge.textContent = p.shouldTriggerAdvisor
+      ? "🟢 Triggers advisor"
+      : "🟡 Skips advisor";
+
+    const insertBtn = document.createElement("button");
+    insertBtn.type = "button";
+    insertBtn.className = "sp-insert-btn";
+    insertBtn.title = "Insert into chat";
+    insertBtn.setAttribute("aria-label", `Insert "${p.title}" into chat`);
+    insertBtn.textContent = "+";
+    insertBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
+      insertSamplePrompt(p.prompt, { fromModal: true });
+    });
+
+    actions.appendChild(badge);
+    actions.appendChild(insertBtn);
+
+    header.appendChild(titleEl);
+    header.appendChild(actions);
+
+    const body = document.createElement("div");
+    body.className = "sp-card-body";
+    body.textContent = p.prompt;
+
+    const hint = document.createElement("div");
+    hint.className = "sp-card-hint";
+    hint.textContent = `${tierLabel} (${SP_COMPLEXITY_RANGE[tier]}) · click anywhere to expand · click + to insert`;
+
+    card.appendChild(header);
+    card.appendChild(body);
+    card.appendChild(hint);
+
+    // Click anywhere else on the card toggles expand
+    card.addEventListener("click", () => card.classList.toggle("expanded"));
+
+    spModalBodyEl.appendChild(card);
+  });
+
+  spModalCountEl.textContent = `${filtered.length} of ${samplePrompts.length} prompt${
+    samplePrompts.length === 1 ? "" : "s"
+  }`;
+}
+
+function openSeeAllModal() {
+  if (samplePrompts.length === 0) return;
+  renderModalCards();
+  spModalOverlayEl.classList.add("open");
+  // Move focus into the modal for accessibility — focus the active filter chip.
+  const activeFilter = spModalOverlayEl.querySelector(".sp-filter-pill.active");
+  if (activeFilter) setTimeout(() => activeFilter.focus(), 30);
+}
+
+function closeSeeAllModal() {
+  spModalOverlayEl.classList.remove("open");
+}
+
+spModalCloseBtn.addEventListener("click", closeSeeAllModal);
+spModalOverlayEl.addEventListener("click", (e) => {
+  // Backdrop click — only when clicking the overlay itself, not its content
+  if (e.target === spModalOverlayEl) closeSeeAllModal();
+});
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape" && spModalOverlayEl.classList.contains("open")) {
+    closeSeeAllModal();
+  }
+});
+
+// Filter chips
+spFilterPillEls.forEach((pill) => {
+  pill.addEventListener("click", () => {
+    spFilterPillEls.forEach((p) => p.classList.remove("active"));
+    pill.classList.add("active");
+    spCurrentFilter = pill.dataset.spFilter;
+    renderModalCards();
+  });
+});
+
+// ----- Init ----------------------------------------------------------------
+onSamplePromptsLoaded = renderPillRow;
+// In case the fetch already completed before this wiring (unlikely but cheap):
+if (samplePrompts.length > 0) renderPillRow();
+
+loadSamplePrompts();

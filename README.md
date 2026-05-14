@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.6.2-blue)
+![Version](https://img.shields.io/badge/version-1.7.0-blue)
 [![Release Notes](https://img.shields.io/badge/release%20notes-read-orange)](release-notes.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
@@ -84,11 +84,21 @@ You're now ready to send prompts.
 - **Frontend:** Vanilla JS (no frameworks)
 - **API:** [Anthropic SDK](https://github.com/anthropics/anthropic-sdk-node) (`@anthropic-ai/sdk`)
 - **Hosting:** [Railway](https://railway.com)
-- **Evaluation:** Anthropic Claude Opus 4.7 or OpenAI GPT-5.4 (LLM-as-judge, via direct API calls — no additional SDKs)
+- **Evaluation:** Anthropic Claude Opus 4.7 or OpenAI GPT-5.5 (LLM-as-judge, via direct API calls — no additional SDKs)
 
 ---
 
 ## Using it
+
+### Sample prompts library (v1.7.0+)
+
+Above the chat input, an inline row of **sample prompt pills** is shown until you send your first message. Each pill is tagged: 🟢 = expected to trigger the advisor (substantive work where planning helps), 🟡 = expected to skip the advisor (single-step factual or recipe-style request). **Hover** any pill to preview the full prompt body — the tooltip also shows the 3-bar **complexity meter** (Quick / Standard / Heavy) with directional token ranges, so you can see complexity at a glance without opening the modal. **Click** a pill to insert it into the chat input — replaces existing text after a confirmation.
+
+The `+ See all` pill opens a modal with the full library, filterable by category (All / Triggers / Skips). Each card has the same complexity meter, a `+` insert button, and an expandable body. The modal footer has an always-visible legend mapping each tier to its token range — no hover required. After your first message the row collapses to a single `💡 Sample prompts ▾` pill that re-expands on click; New Chat resets it.
+
+The library lives in [`public/sample-prompts.json`](public/sample-prompts.json) — edit it directly to add your own prompts (no rebuild needed). Schema: `{ title, prompt, shouldTriggerAdvisor, complexity }` where `complexity` is one of `"quick" | "standard" | "heavy"`.
+
+> **Note on complexity:** the meter is **directional guidance only**, not a real cost estimate. The advisor's runtime escalation decision (whether it fires at all, how many times, how long the outputs are) can't be predicted from the prompt text alone — so a single dollar figure would mislead more than help.
 
 ### Send a prompt
 
@@ -184,7 +194,7 @@ On turn 1 every branch answers the same prompt from scratch — that's a clean c
 In the Settings modal under **Quality Evaluation**, pick one of:
 
 - **Anthropic** (uses `claude-opus-4-7`) — uses your existing Anthropic API key
-- **OpenAI** (uses `gpt-5.4`) — requires a separate OpenAI API key you paste in the same section
+- **OpenAI** (uses `gpt-5.5`) — requires a separate OpenAI API key you paste in the same section
 
 You can also edit the judge prompt / rubric directly in the same section. The default is strong; only change it if you know what you're doing.
 
@@ -193,7 +203,7 @@ You can also edit the judge prompt / rubric directly in the same section. The de
 Each evaluation fires **2 judge calls** (the swapped orderings). Rough per-evaluation cost for a typical turn:
 
 - **claude-opus-4-7:** ~$0.02–$0.06 per eval (Opus-tier pricing is now $5/$25 per MTok)
-- **gpt-5.4:** ~$0.02–$0.06 per eval
+- **gpt-5.5:** ~$0.03–$0.10 per eval ($5/$30 per MTok in/out — output is the dominant cost driver)
 
 Exact numbers appear in the eval panel footer after each run.
 
@@ -201,7 +211,7 @@ Exact numbers appear in the eval panel footer after each run.
 
 ## Test prompts
 
-Two prompts designed to trigger the advisor (substantive work where planning helps), and two that shouldn't (single-step factual answers):
+These four prompts are also available in the in-app **Sample Prompts** library (the pill row above the chat input) — listed here for the GitHub reader who isn't running the app yet. Two are designed to trigger the advisor (substantive work where planning helps), and two that shouldn't (single-step factual answers):
 
 **Should trigger the advisor:**
 

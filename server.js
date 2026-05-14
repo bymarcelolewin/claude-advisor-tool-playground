@@ -119,11 +119,39 @@ function clientFor(apiKey) {
  * Remove advisor-only sections from a system prompt.
  * Anything between <!-- advisor:only --> and <!-- /advisor:only --> is stripped.
  * Used for baseline runs (no advisor tool available).
+ *
+ * After the content removal, all newlines are replaced with a single space and
+ * doubled spaces collapsed — the user's preference is a one-line, no-newline
+ * system prompt to minimize token cost. Word boundaries are preserved (newlines
+ * become spaces, not nothing), so bullets like `\n- foo` become ` - foo`.
  */
 function stripAdvisorOnly(text) {
   if (!text) return "";
   return text
     .replace(/<!--\s*advisor:only\s*-->[\s\S]*?<!--\s*\/advisor:only\s*-->/g, "")
+    .replace(/\n+/g, " ")
+    .replace(/ {2,}/g, " ")
+    .trim();
+}
+
+/**
+ * Remove just the <!-- advisor:only --> / <!-- /advisor:only --> marker tags
+ * from a system prompt while keeping the content between them. Used for the
+ * advisor branch — content inside the markers IS meant to be sent to the
+ * advisor-tool-enabled executor, but the sentinel markers themselves are a
+ * playground-only convention and shouldn't reach the API.
+ *
+ * The regex also consumes the newline immediately after each marker so the
+ * surrounding lines join cleanly (no blank-line gap where a sentinel used to
+ * be). Mirrors the same regex used by the Code View snippet generator in
+ * public/app.js so the actual request matches the canonical Code View example.
+ */
+function stripSentinelMarkers(text) {
+  if (!text) return "";
+  return text
+    .replace(/<!--\s*\/?advisor:only\s*-->[ \t]*\n?/g, "")
+    .replace(/\n+/g, " ")
+    .replace(/ {2,}/g, " ")
     .trim();
 }
 
@@ -176,6 +204,10 @@ app.post("/api/chat", async (req, res) => {
     const client = clientFor(apiKey);
     const activeBranches = branchesForMode(mode || "advisor");
     const baselinePrompt = stripAdvisorOnly(systemPrompt || "");
+    // Advisor branch keeps the content between sentinels but drops the marker
+    // tags themselves — they're a playground-only convention. This matches
+    // what the Code View snippet generator already shows.
+    const advisorPrompt = stripSentinelMarkers(systemPrompt || "");
 
     // Client sends per-branch histories (prior turns only). We append the new
     // user message here before dispatching to the API.
@@ -217,7 +249,7 @@ app.post("/api/chat", async (req, res) => {
         tools: [advisorTool],
         messages: branchMessages.advisor,
       };
-      if (systemPrompt && systemPrompt.trim()) params.system = systemPrompt;
+      if (advisorPrompt) params.system = advisorPrompt;
       return withEffort(params);
     };
 
@@ -350,7 +382,7 @@ const JUDGE_LETTERS = ["A", "B", "C", "D"];
 
 // Hardcoded current evaluator model names. Update when models turn over.
 const EVAL_MODEL_ANTHROPIC = "claude-opus-4-7";
-const EVAL_MODEL_OPENAI = "gpt-5.4";
+const EVAL_MODEL_OPENAI = "gpt-5.5";
 
 // Build the candidate block for a given ordering. Returns the text block
 // and a letter→branch map so we can un-blind the judge's output afterwards.

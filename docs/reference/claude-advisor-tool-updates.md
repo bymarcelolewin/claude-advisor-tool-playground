@@ -5,9 +5,10 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 **Source URLs:**
 - Advisor tool: https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool
 - Effort parameter: https://platform.claude.com/docs/en/build-with-claude/effort
-- Model pricing: https://platform.claude.com/docs/en/about-claude/pricing
+- Anthropic model pricing: https://platform.claude.com/docs/en/about-claude/pricing
+- OpenAI model pricing (evaluator only): https://developers.openai.com/api/docs/pricing
 
-**Scope.** This document tracks changes from the three source pages above **in the context of how they affect the Claude Advisor Tool API or this playground**, not as a general mirror of Anthropic's docs. The following are intentionally **out of scope** and should not be added here:
+**Scope.** This document tracks changes from the source pages above **in the context of how they affect the Claude Advisor Tool API or this playground**, not as a general mirror of either provider's docs. The OpenAI pricing page is tracked only for the single model the playground uses as the optional evaluator judge (`gpt-5.5`); other OpenAI models / features are out of scope. The following are intentionally **out of scope** and should not be added here:
 
 - Pricing or billing constructs for platforms the playground doesn't use — Claude Platform on AWS (CCU billing), Claude Managed Agents, Amazon Bedrock, Google Vertex AI, Microsoft Foundry
 - Tool-specific pricing for tools the playground doesn't expose — code execution, web search, web fetch, text editor, computer use, bash
@@ -342,7 +343,7 @@ The advisor sub-inference does not stream. The executor's stream pauses while th
 
 ## Pricing Snapshot
 
-Verified against `https://platform.claude.com/docs/en/about-claude/pricing` on the Last Reviewed date at the top of this file. Re-check on future catch-up runs — pricing drifts independently of API surface changes.
+Verified against `https://platform.claude.com/docs/en/about-claude/pricing` (Anthropic) and `https://developers.openai.com/api/docs/pricing` (OpenAI evaluator only) on the Last Reviewed date at the top of this file. Re-check on future catch-up runs — pricing drifts independently of API surface changes.
 
 | Model            | Input / MTok | Output / MTok | Notes |
 |------------------|--------------|---------------|-------|
@@ -381,3 +382,28 @@ Opus 4.6 and Opus 4.7 both offer a "fast mode" beta at 6× standard pricing — 
 AWS Bedrock and Google Vertex regional / multi-region endpoints carry a **10% premium** over global endpoints for Claude Sonnet 4.5, Haiku 4.5, and future models. Not applicable to the playground (Anthropic API only), but worth tracking for users considering a production deploy on those platforms.
 
 **Microsoft Foundry** is now listed alongside AWS Bedrock and Google Vertex AI as a third-party distribution platform for Claude models. Foundry has its own pricing page; the 10% regional/multi-region premium structure documented above is specific to AWS Bedrock and Google Vertex AI and may not apply identically on Foundry. Not applicable to the playground.
+
+### OpenAI Evaluator Pricing
+
+The playground uses one OpenAI model as the optional evaluator judge (in addition to the default Anthropic judge). Tracked here for cost-estimate accuracy in the trace pane and the Settings → Cost estimates blurb.
+
+| Model      | Input / MTok | Cached input / MTok | Output / MTok | Notes |
+|------------|--------------|---------------------|---------------|-------|
+| `gpt-5.5`  | $5           | $0.50               | $30           | Output is the dominant cost driver. Batch API: 50% discount on input + output (not applicable to the playground — evals are interactive). |
+
+Variants on the OpenAI pricing page that the playground does **not** use: `gpt-5.5-pro` ($30 / $180 per MTok), and the older `gpt-5.4-mini` / `gpt-5.4-nano` family. These are out of scope.
+
+**Watch for:** appearance of a newer GPT-5-series flagship (e.g., `gpt-5.6`) on the OpenAI pricing page. When that happens, evaluate whether to bump `EVAL_MODEL_OPENAI` in `server.js` and the `PRICES` table in `public/app.js`.
+
+### OpenAI evaluator pricing (`gpt-5.5`)
+
+The playground supports an optional GPT-based evaluator judge as an alternative to the Anthropic judge. Verified against `https://developers.openai.com/api/docs/pricing` on the Last Reviewed date at the top of this file.
+
+| Model | Input / MTok | Cached input / MTok | Output / MTok | Notes |
+|-------|--------------|---------------------|---------------|-------|
+| `gpt-5.5` | $5 | $0.50 | $30 | Current default OpenAI evaluator. Output is the dominant cost driver (~6× input). |
+| `gpt-5.5-pro` | $30 | — | $180 | Not used by the playground. Listed for context only. |
+
+Batch API discount: 50% on both input and output (same shape as Anthropic's batch discount). Playground does not use the OpenAI Batch API.
+
+**Tracking note.** Only the `gpt-5.5` row is in scope for this reference doc — it's the only OpenAI model the playground touches. If a newer GPT-5-series flagship appears (e.g., `gpt-5.6`), flag it as a candidate replacement during the next `/check-advisor-tool-updates` run; otherwise watch this single row for price drift.

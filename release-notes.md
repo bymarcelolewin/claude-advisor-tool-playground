@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.7.0 — Sample Prompts Library (2026-05-14)](#v170--sample-prompts-library---2026-05-14)
 - [v1.6.2 — Documentation Refresh (Patch) (2026-05-14)](#v162--documentation-refresh-patch---2026-05-14)
 - [v1.6.1 — Documentation Update (Patch) (2026-04-20)](#v161--documentation-update-patch---2026-04-20)
 - [v1.6.0 — Advisor Tool API Catch-up (Opus 4.7) (2026-04-18)](#v160--advisor-tool-api-catch-up-opus-47---2026-04-18)
@@ -14,6 +15,45 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.7.0 — Sample Prompts Library - 2026-05-14
+
+## Overview
+Adds a curated, in-app library of sample prompts so users don't have to guess what kinds of prompts demonstrate the advisor tool well. Eight seed prompts ship in `public/sample-prompts.json` — four that are expected to trigger the advisor (substantive coding / architecture tasks) and four that are expected to skip it (single-step factual or recipe-style questions). The library is editable directly — no rebuild needed.
+
+## Key Features
+- **Inline pill row above the chat input.** Five featured prompts visible until first send: 3 triggers + 2 skips, in JSON-curated order. Each pill shows a 🟢/🟡 dot and the prompt title. **Hover** a pill for a tooltip preview of the full prompt body + a triggers/skips badge. **Click** to insert into the chat input. A `+ See all (8)` pill at the end opens the full-library modal.
+- **Collapsed state after first send.** The row collapses to a single `💡 Sample prompts ▾` pill so it stays accessible but doesn't crowd the input area. Click the collapsed pill to re-expand the row. The `▾` button in the row header also lets you collapse manually before sending. New Chat resets the row to expanded.
+- **"See all" modal.** Centered, fixed-height (`min(640px, 85vh)`) so it doesn't jump when filters are applied. Three filter chips: **All**, **🟢 Triggers advisor**, **🟡 Skips advisor**. Each card shows: a 3-bar **complexity meter** (Quick / Standard / Heavy — directional only, not a real cost estimate), the title, the badge, a `+` insert button, and a 2-line-truncated body. **Click anywhere on the card body** to expand the full prompt in place. **Click `+`** to insert and close the modal. Esc / click-outside / `×` all dismiss.
+- **Confirm-replace protection.** If the chat input already has text, inserting a sample prompt opens a small confirm modal asking whether to replace. Defaults to "Keep my text".
+- **Complexity meter.** 3-bar indicator left of each prompt's title in the modal: 1 muted-gray bar = Quick (~500–2k tokens), 2 accent-blue bars = Standard (~3–8k tokens), 3 orange bars = Heavy (~10–25k tokens — 3× in compare-all-three mode). The same meter also appears in the inline pill tooltip alongside the triggers/skips badge, so users see complexity at a glance without opening the modal. Token-range labels are baked into always-visible text (card hint line + modal-footer legend + tooltip) rather than relying on a slow native `title`-tooltip. Explicitly documented as **not** a real cost estimate because the advisor's runtime escalation decision can't be predicted from the prompt alone.
+
+## Bundled changes (mid-build scope additions)
+
+These were folded into v1.7.0 during build/test rather than spun out as a separate patch — all small, all cohesive with the version's UX goals:
+
+- **GPT-5.5 evaluator bump.** `EVAL_MODEL_OPENAI` in `server.js` upgraded from `gpt-5.4` → `gpt-5.5`. All 8 user-facing references updated (Settings hint, eval dropdown label, cost-estimates blurb, `PRICES` table, README Tech-stack / Choosing-a-judge / Cost sections). Pricing verified against the live OpenAI pricing page (gpt-5.5 is $5 input / $30 output per MTok — corrected an interim placeholder that had output at $15). Per-eval cost estimate bumped from `~$0.02–$0.06` to `~$0.03–$0.10` with a note that output is the dominant driver.
+- **OpenAI pricing tracking in `/check-advisor-tool-updates`.** Added `https://developers.openai.com/api/docs/pricing` as a 4th WebFetch step in the catch-up script, scoped to the playground's evaluator model only. New **OpenAI Evaluator Pricing** subsection in `docs/reference/claude-advisor-tool-updates.md` mirroring the Anthropic Pricing Snapshot format. Future catch-up runs will now surface evaluator-pricing drift the same way they surface advisor-tool-API drift.
+- **Sentinel markers stripped from real API requests, not just Code View.** The advisor branch's actual outgoing `params.system` now passes through a new `stripSentinelMarkers()` helper in `server.js` that uses the same regex as Code View's `stripAdvisorSentinels()`. Result: the `<!-- advisor:only -->` / `<!-- /advisor:only -->` marker tags no longer leak into the live request — what Code View shows is what actually ships. Tiny token saving, but more importantly the canonical example and the real request are now consistent.
+- **Newline collapse in all three strip functions.** After the marker handling, any run of newlines is replaced with a single space and double-spaces collapsed back to single. The system prompt sent to the API is now one continuous line — no blank-line gaps, no per-paragraph `\n`. Saves a small number of tokens per request and makes the Full I/O viewer easier to scan.
+- **Complexity-meter cursor fix.** Removed the misleading `cursor: help` from `.sp-complexity-meter` (the slow native `title`-tooltip felt broken on hover). Token-range explanations are now in always-visible text instead — every card hint, the footer legend, and the inline-pill tooltip carry the full tier description without relying on hover.
+
+## Enhancements
+- **Welcome slide 4 updated.** Replaced the hard-coded two-prompt `<ul>` with a sentence pointing users at the new pill row, with the 🟢/🟡 legend inline. Existing users will see the updated slideshow once thanks to a welcome-seen storage key bump (`advisor-playground-welcome-seen-v1` → `v2`).
+- **New CSS palette additions.** Two new CSS variables — `--triggers: #20c05b` (green) and `--skips: #e0b25c` (amber, matching the existing `--eval-accent` color). On-brand with the existing palette; the amber-for-skips choice was deliberate (red was rejected because "skips" isn't an error condition, just a different category).
+- **Reuses the existing confirm modal scaffolding** for the replace-confirmation flow — no parallel modal markup. Shares the `showConfirm()` Promise-returning helper that already powered the New Chat and Factory Reset confirmations.
+
+## Bug Fixes
+- None — this is a purely additive feature; no existing behavior changed.
+
+## Other Notes
+- **No server changes.** The JSON is served by Express's existing `app.use(express.static("public"))` middleware. No new API endpoint, no server-side parsing.
+- **Defensive loading.** If `sample-prompts.json` is missing, malformed, or has individual entries that fail schema validation, the feature degrades silently — no pill row shown, `console.warn` for diagnostics, chat input remains fully functional.
+- **Schema documented in the JSON file's `_comment` field.** Hand-editable; rebuild not required. Adding more prompts is as simple as appending to the array.
+- **All prompt text is rendered via `.textContent` / `createTextNode`**, never `.innerHTML` — even though our own JSON is trusted, this ensures the feature is XSS-safe by construction if anyone forks the project and points it at a less-trusted source.
+- **Complexity meter placement.** Per Q5 from the design doc, the meter is **not** rendered directly on the inline pills (the pill chrome was too compact for a 3-bar indicator alongside the dot + title). Mid-build, the meter was added to the **pill hover tooltip** instead — same visual, but only revealed on hover, so the pills stay clean while complexity remains discoverable without opening the See-all modal.
 
 ---
 

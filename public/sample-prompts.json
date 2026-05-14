@@ -1,0 +1,52 @@
+{
+  "prompts": [
+    {
+      "title": "Parse ISO 8601 durations",
+      "prompt": "Write a Python function `parse_iso_duration(s)` that parses an ISO 8601 duration string like `PT2H30M15S`, `P1DT12H`, or `-PT0.5S` and returns the total duration in seconds as a float. Support years, months, weeks, days, hours, minutes, seconds, fractional seconds, and negative durations. Assume 1 year = 365.25 days and 1 month = 30 days for conversion. Include at least 6 test cases covering edge cases, and explain your approach before writing the code.",
+      "shouldTriggerAdvisor": true,
+      "complexity": "heavy"
+    },
+    {
+      "title": "Design URL shortener",
+      "prompt": "Design a URL shortener service with custom aliases, per-link expiration, and click analytics. Describe: (a) the database schema with indexes, (b) the HTTP API endpoints with request/response shapes, (c) the short-code generation strategy and how you'd handle collisions, (d) how analytics events are written without slowing down redirects, and (e) one trade-off decision you made and why. Target: two-person team, ~10k redirects/day, self-hosted.",
+      "shouldTriggerAdvisor": true,
+      "complexity": "heavy"
+    },
+    {
+      "title": "When was Rust created?",
+      "prompt": "What year was the Rust programming language first publicly released, and who originally created it?",
+      "shouldTriggerAdvisor": false,
+      "complexity": "quick"
+    },
+    {
+      "title": "Concurrent worker pool in Go",
+      "prompt": "Build a concurrent worker pool in Go with graceful shutdown. It should accept jobs from a channel, run them with N workers, support a maximum in-flight limit of 10, and drain in-flight work cleanly when shutdown is signaled. Walk me through your approach before writing code.",
+      "shouldTriggerAdvisor": true,
+      "complexity": "standard"
+    },
+    {
+      "title": "Convert 72°F to °C",
+      "prompt": "Convert 72 degrees Fahrenheit to Celsius. Show the formula and the numeric answer rounded to one decimal place.",
+      "shouldTriggerAdvisor": false,
+      "complexity": "quick"
+    },
+    {
+      "title": "Refactor a callback pyramid",
+      "prompt": "I have a Node.js function with deeply nested callbacks doing sequential async work (read file → parse → call API → write result). Refactor it to use async/await, explain what changed and why each change is safe, and call out one error-handling edge case I should be aware of.",
+      "shouldTriggerAdvisor": true,
+      "complexity": "standard"
+    },
+    {
+      "title": "Capital of Australia",
+      "prompt": "What is the capital city of Australia?",
+      "shouldTriggerAdvisor": false,
+      "complexity": "quick"
+    },
+    {
+      "title": "Undo last git commit",
+      "prompt": "What's the git command to undo my most recent commit while keeping my changes staged?",
+      "shouldTriggerAdvisor": false,
+      "complexity": "quick"
+    }
+  ]
+}

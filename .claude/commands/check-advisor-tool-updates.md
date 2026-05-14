@@ -23,7 +23,8 @@ Read and execute `.cody/commands/refresh.md`. Follow the instructions through th
 2. WebFetch `https://platform.claude.com/docs/en/agents-and-tools/tool-use/advisor-tool`.
 3. WebFetch `https://platform.claude.com/docs/en/build-with-claude/effort`.
 4. WebFetch `https://platform.claude.com/docs/en/about-claude/pricing`.
-5. Compare the fetched content against the reference doc and (when relevant) against `server.js` and `public/app.js`. Look specifically for changes in:
+5. WebFetch `https://developers.openai.com/api/docs/pricing` — only for the OpenAI model the playground uses as the optional evaluator judge (currently `gpt-5.5`). Flag any change to that model's input / cached-input / output price, or the appearance of a newer GPT-5-series flagship that should replace it.
+6. Compare the fetched content against the reference doc and (when relevant) against `server.js` and `public/app.js`. Look specifically for changes in:
    - Beta header version
    - Tool `type` identifier
    - Supported executor / advisor models
@@ -32,7 +33,8 @@ Read and execute `.cody/commands/refresh.md`. Follow the instructions through th
    - Error codes
    - Streaming / caching / effort behavior
    - New or updated effort levels for the models
-   - Model pricing (input/output rates per MTok, cache multipliers, tokenizer changes). Compare against the `PRICES` table in `public/app.js` and the "Pricing Snapshot" section of the reference doc.
+   - Anthropic model pricing (input/output rates per MTok, cache multipliers, tokenizer changes). Compare against the `PRICES` table in `public/app.js` and the "Pricing Snapshot" section of the reference doc.
+   - OpenAI evaluator model pricing (`gpt-5.5` row in the `PRICES` table) — and whether a newer GPT-5-series flagship has been released that should replace it. Compare against the "OpenAI Evaluator Pricing" subsection of the reference doc.
    - Anything else documented that our reference file or code does not reflect
 
 ## Step 4: Present findings
