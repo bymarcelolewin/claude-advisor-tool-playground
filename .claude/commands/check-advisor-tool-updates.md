@@ -1,6 +1,6 @@
 ---
 description: "Activate Cody, refresh memory, then diff Anthropic's Advisor Tool docs against our playground"
-allowed-tools: ["Read", "WebFetch", "Glob", "Grep"]
+allowed-tools: ["Read", "WebFetch", "Glob", "Grep", "Skill", "Bash"]
 ---
 
 # Check Advisor Tool API Updates
@@ -9,11 +9,11 @@ Execute these steps in order. Do NOT stop for user input between steps 1, 2, and
 
 ## Step 1: Activate Cody Product Builder
 
-Read and execute `.claude/commands/cody-product-builder.md` (which in turn reads `.cody/activate.md`). Show the activation banner and the version banner as specified. **Skip the contextual prompt at the end of the activation file (step 5) — do not ask "What would you like to work on?" or wait for user input. Continue to Step 2.**
+Activate the **Cody Product Builder** skill via the `/cody-product-builder` command (invoke it with the Skill tool, skill name `cody-product-builder`). On activation the skill resolves the project config and shows its activation banner (which includes the version). **Skip the skill's final contextual prompt — do not ask "What would you like to work on?" or wait for user input. Continue immediately to Step 2.**
 
 ## Step 2: Run :cody refresh
 
-Read and execute `.cody/commands/refresh.md`. Follow the instructions through the "DONE REVIEWING THE ENTIRE PROJECT" section. **Skip the final "OFFER TO UPDATE DOCUMENTS" section — do not ask about updating the PRD, plan, and release notes. Continue to Step 3.**
+Run `:cody refresh` (the skill reads and executes its `commands/refresh.md`). Follow the instructions through the "DONE REVIEWING THE ENTIRE PROJECT" section. **Skip the final "OFFER TO UPDATE DOCUMENTS" section — do not ask about updating the PRD, plan, and release notes. Continue to Step 3.**
 
 ## Step 3: Diff the Advisor Tool docs against our playground
 
@@ -61,5 +61,5 @@ Ask the **USER** exactly:
 
 **STOP** and wait for the **USER**.
 
-- If YES → read and execute `.cody/commands/build.md`.
+- If YES → run `:cody build` (the skill reads and executes its `commands/build.md`).
 - If NO → end here.
