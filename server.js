@@ -11,6 +11,26 @@ const PKG_JSON = JSON.parse(readFileSync(join(__dirname, "package.json"), "utf8"
 const PKG_VERSION = PKG_JSON.version;
 const PKG_LAST_UPDATED = PKG_JSON.lastUpdated || null;
 
+// Model registry — single source of truth shared with the client
+// (public/models.json). Read once at startup; a missing or malformed file is
+// fatal (fail-fast) since both the client and the evaluator depend on it.
+const MODELS = JSON.parse(readFileSync(join(__dirname, "public", "models.json"), "utf8"));
+
+// Resolve the evaluator judge model for a provider: the `eval`-tagged registry
+// entry whose `provider` matches. Throws if a provider resolves to zero or more
+// than one model (ambiguous config) — surfaced to the client via /api/evaluate.
+function resolveEvalModel(provider) {
+  const matches = Object.keys(MODELS).filter(
+    (id) => MODELS[id] && MODELS[id].eval && MODELS[id].provider === provider,
+  );
+  if (matches.length !== 1) {
+    throw new Error(
+      `models.json must define exactly one eval model for provider "${provider}" (found ${matches.length}).`,
+    );
+  }
+  return matches[0];
+}
+
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(express.static(join(__dirname, "public")));
@@ -380,9 +400,8 @@ app.post("/api/chat", async (req, res) => {
 const JUDGE_MAX_TOKENS = 4096;
 const JUDGE_LETTERS = ["A", "B", "C", "D"];
 
-// Hardcoded current evaluator model names. Update when models turn over.
-const EVAL_MODEL_ANTHROPIC = "claude-opus-4-7";
-const EVAL_MODEL_OPENAI = "gpt-5.5";
+// Evaluator judge models are resolved from the model registry (models.json)
+// via resolveEvalModel(provider) — no hardcoded constants.
 
 // Build the candidate block for a given ordering. Returns the text block
 // and a letter→branch map so we can un-blind the judge's output afterwards.
@@ -521,10 +540,10 @@ async function runJudgeOnce({
   let raw;
   let model;
   if (provider === "openai") {
-    model = EVAL_MODEL_OPENAI;
+    model = resolveEvalModel("openai");
     raw = await callOpenAIJudge(fullPrompt, openaiKey, model);
   } else {
-    model = EVAL_MODEL_ANTHROPIC;
+    model = resolveEvalModel("anthropic");
     raw = await callAnthropicJudge(anthropicClient, fullPrompt, model);
   }
   const duration_ms = Date.now() - t0;

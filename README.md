@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.7.0-blue)
+![Version](https://img.shields.io/badge/version-1.8.0-blue)
 [![Release Notes](https://img.shields.io/badge/release%20notes-read-orange)](release-notes.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
@@ -113,9 +113,9 @@ Each conversation turn is wrapped in a collapsible container on both sides so yo
 
 A **Config Models** panel sits above the chat on the left, with four controls:
 
-- **Executor model** — `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`, or `claude-opus-4-7`. This is the model doing the main work.
-- **Effort** — `Low` / `Medium` / `High` (default) / `xHigh` / `Max`. Controls thinking depth and overall token spend on the executor via `output_config.effort`. Disabled when Haiku is the executor (Haiku doesn't support effort). `xHigh` is only available when the executor is Opus 4.7 — Anthropic's recommended starting point for coding and agentic work on 4.7. Applied equally to all branches in compare mode so comparisons stay fair.
-- **Advisor model** — `claude-opus-4-7` (the only valid advisor per Anthropic's current compatibility table).
+- **Executor model** — `claude-haiku-4-5`, `claude-sonnet-4-6`, `claude-opus-4-6`, `claude-opus-4-7`, or `claude-opus-4-8`. This is the model doing the main work.
+- **Effort** — `Low` / `Medium` / `High` (default) / `xHigh` / `Max`. Controls thinking depth and overall token spend on the executor via `output_config.effort`. Disabled when Haiku is the executor (Haiku doesn't support effort). `xHigh` is available when the executor is Opus 4.7 or Opus 4.8 — Anthropic's recommended starting point for coding and agentic work. Applied equally to all branches in compare mode so comparisons stay fair.
+- **Advisor model** — `claude-opus-4-8` (default) or `claude-opus-4-7`. Per Anthropic's compatibility table the advisor must be at least as capable as the executor, so when the executor is Opus 4.8 the 4.7 advisor option is grayed out (4.8 can only pair with 4.8). The model list is driven by `public/models.json`.
 - **Mode** — single-branch or one of three compare modes (see below).
 
 The canonical pair is Sonnet executor + Opus advisor. That's the whole point of the feature: let the cheap model do most of the work and only call the expensive one when it needs strategic input.
@@ -193,7 +193,7 @@ On turn 1 every branch answers the same prompt from scratch — that's a clean c
 
 In the Settings modal under **Quality Evaluation**, pick one of:
 
-- **Anthropic** (uses `claude-opus-4-7`) — uses your existing Anthropic API key
+- **Anthropic** (uses `claude-opus-4-8`) — uses your existing Anthropic API key
 - **OpenAI** (uses `gpt-5.5`) — requires a separate OpenAI API key you paste in the same section
 
 You can also edit the judge prompt / rubric directly in the same section. The default is strong; only change it if you know what you're doing.
@@ -202,7 +202,7 @@ You can also edit the judge prompt / rubric directly in the same section. The de
 
 Each evaluation fires **2 judge calls** (the swapped orderings). Rough per-evaluation cost for a typical turn:
 
-- **claude-opus-4-7:** ~$0.02–$0.06 per eval (Opus-tier pricing is now $5/$25 per MTok)
+- **claude-opus-4-8:** ~$0.02–$0.06 per eval (Opus-tier pricing is $5/$25 per MTok)
 - **gpt-5.5:** ~$0.03–$0.10 per eval ($5/$30 per MTok in/out — output is the dominant cost driver)
 
 Exact numbers appear in the eval panel footer after each run.

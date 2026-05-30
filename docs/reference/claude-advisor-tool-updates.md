@@ -16,7 +16,7 @@ This document tracks changes to Anthropic's advisor tool API as discovered from 
 
 Overlap items stay in scope. For example, fast-mode pricing on Opus 4.7 is tracked here because Opus 4.7 is a valid advisor-tool executor and the playground's advisor model, even though the playground itself does not opt into fast mode. The test is "does it affect the advisor tool API, advisor effort behavior, or pricing of a model/feature the playground actually uses?" — not "did the source page change?"
 
-Last reviewed: 2026-05-14
+Last reviewed: 2026-05-29
 
 ---
 
@@ -24,20 +24,38 @@ Last reviewed: 2026-05-14
 
 - **Beta header:** `advisor-tool-2026-03-01` (unchanged since launch)
 - **Tool type:** `advisor_20260301`
-- **Supported executor models:** Claude Haiku 4.5, Claude Sonnet 4.6, Claude Opus 4.6, Claude Opus 4.7
-- **Supported advisor models:** Claude Opus 4.7 (only)
+- **Supported executor models:** Claude Haiku 4.5, Claude Sonnet 4.6, Claude Opus 4.6, Claude Opus 4.7, Claude Opus 4.8
+- **Supported advisor models:** Claude Opus 4.7 and Claude Opus 4.8 (Opus 4.8 is Anthropic's current default advisor; the Opus 4.8 executor accepts only Opus 4.8 as advisor — see table)
 - **Platform:** Claude API (Anthropic) and Claude Platform on AWS. Not available on Amazon Bedrock, Google Vertex AI, or Microsoft Foundry.
 
 ### Model compatibility table (from Anthropic's docs)
 
-| Executor models                                | Advisor models                      |
-|------------------------------------------------|-------------------------------------|
-| Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) | Claude Opus 4.7 (`claude-opus-4-7`) |
-| Claude Sonnet 4.6 (`claude-sonnet-4-6`)        | Claude Opus 4.7 (`claude-opus-4-7`) |
-| Claude Opus 4.6 (`claude-opus-4-6`)            | Claude Opus 4.7 (`claude-opus-4-7`) |
-| Claude Opus 4.7 (`claude-opus-4-7`)            | Claude Opus 4.7 (`claude-opus-4-7`) |
+The governing rule is **"the advisor must be at least as capable as the executor."** Every executor below Opus 4.8 accepts either Opus 4.7 or Opus 4.8; the Opus 4.8 executor accepts only Opus 4.8.
 
-Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4.6 is no longer documented as a supported advisor; empirically it may still be accepted by the API during a grace period, but code should default to Opus 4.7.
+| Executor models                                | Advisor models                                                            |
+|------------------------------------------------|---------------------------------------------------------------------------|
+| Claude Haiku 4.5 (`claude-haiku-4-5-20251001`) | Claude Opus 4.8 (`claude-opus-4-8`), Claude Opus 4.7 (`claude-opus-4-7`)   |
+| Claude Sonnet 4.6 (`claude-sonnet-4-6`)        | Claude Opus 4.8 (`claude-opus-4-8`), Claude Opus 4.7 (`claude-opus-4-7`)   |
+| Claude Opus 4.6 (`claude-opus-4-6`)            | Claude Opus 4.8 (`claude-opus-4-8`), Claude Opus 4.7 (`claude-opus-4-7`)   |
+| Claude Opus 4.7 (`claude-opus-4-7`)            | Claude Opus 4.8 (`claude-opus-4-8`), Claude Opus 4.7 (`claude-opus-4-7`)   |
+| Claude Opus 4.8 (`claude-opus-4-8`)            | Claude Opus 4.8 (`claude-opus-4-8`)                                        |
+
+Invalid executor/advisor pairs return `400 invalid_request_error` naming the unsupported combination. The valid advisor set is now cleanly defined as {Opus 4.7, Opus 4.8}; Opus 4.6 is not a supported advisor. The playground enforces the per-executor advisor set client-side (from `models.json`) so an invalid pair is never sent.
+
+### Observed / undocumented behavior (not in Anthropic's published table)
+
+These are empirical findings that go beyond what Anthropic currently documents. They are tracked here for awareness but are **deliberately NOT reflected in the authoritative compatibility table above, nor in the playground's `models.json` advisor set** — those continue to mirror only Anthropic's documented behavior.
+
+**Confirmed against the API on 2026-05-30:** the `advisor_20260301` API accepts advisor models *beyond* the documented {Opus 4.7, Opus 4.8} set — specifically **Claude Sonnet 4.6** and **Claude Opus 4.6** — as long as the advisor is at least as capable as the executor. Confirmed by direct API calls through this playground (Claude Code's `/advisor` surfaced it first). The governing constraint appears to be purely capability-rank (Haiku 4.5 < Sonnet 4.6 < Opus 4.6 < Opus 4.7 < Opus 4.8): any advisor ranked ≥ the executor is accepted.
+
+| Advisor (beyond the documented set) | Valid executors (advisor ≥ executor) | Status |
+|-------------------------------------|---------------------------------------|--------|
+| Claude Sonnet 4.6 | Haiku 4.5, Sonnet 4.6 | ✅ confirmed working |
+| Claude Opus 4.6   | Haiku 4.5, Sonnet 4.6, Opus 4.6 | ✅ confirmed working |
+
+So Anthropic's **documented** advisor set ({Opus 4.7, Opus 4.8}) is a conservative subset of what the API actually accepts. The real constraint is the rule Anthropic states — *"the advisor must be at least as capable as the executor"* — applied across the full model lineup, not just the Opus 4.7/4.8 pair the table lists.
+
+- **Caveats:** undocumented behavior can change without notice, and Anthropic could begin rejecting these pairings at any time. We are intentionally **not** exposing Sonnet- or Opus-4.6-as-advisor in the playground UI on the strength of undocumented behavior — if Anthropic documents it, we'll promote those pairings into the authoritative table and `models.json` then.
 
 ---
 
@@ -47,7 +65,7 @@ Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4
 |-----------|------|---------|-------------|
 | `type` | string | required | Must be `"advisor_20260301"` |
 | `name` | string | required | Must be `"advisor"` |
-| `model` | string | required | Advisor model ID (e.g., `"claude-opus-4-7"`) |
+| `model` | string | required | Advisor model ID (e.g., `"claude-opus-4-8"`) |
 | `max_uses` | integer | unlimited | Max advisor calls per single API request. Excess calls return `advisor_tool_result_error` with `error_code: "max_uses_exceeded"`. Per-request cap only — for conversation-level limits, count client-side. |
 | `caching` | object or null | null (off) | Enables prompt caching for the advisor's transcript. Shape: `{"type": "ephemeral", "ttl": "5m" | "1h"}`. Not a breakpoint marker — it's an on/off switch; the server decides cache boundaries. |
 
@@ -58,7 +76,7 @@ Invalid executor/advisor pairs return `400 invalid_request_error`. Claude Opus 4
 The `advisor_tool_result.content` field is a discriminated union:
 
 ### `advisor_result` (standard)
-Returned when the advisor model provides plaintext advice (e.g., Claude Opus 4.7 today).
+Returned when the advisor model provides plaintext advice (e.g., Claude Opus 4.8 / Opus 4.7 today).
 ```json
 {
   "type": "advisor_tool_result",
@@ -134,8 +152,8 @@ This is a parameter on the main API request (`output_config.effort`), not on the
 | `low`    | Haiku 4.5 not supported; all other supported models                | Efficient, best for short scoped tasks. |
 | `medium` | Same as above                                                     | Balanced; drop-in for average workflows where cost matters. |
 | `high`   | Same as above                                                     | Default. Sweet spot for most intelligence-sensitive workloads. |
-| `xhigh`  | **Opus 4.7 only**                                                 | Extended capability for long-horizon work. Recommended starting point for coding and agentic tasks (>30 minute sessions, million-token budgets). |
-| `max`    | Opus 4.7, Opus 4.6, Sonnet 4.6 (and Claude Mythos Preview)         | Absolute maximum capability. Reserve for genuinely frontier problems; often overthinks on structured-output tasks. |
+| `xhigh`  | **Opus 4.7 and Opus 4.8**                                         | Extended capability for long-horizon work. Recommended starting point for coding and agentic tasks (>30 minute sessions, million-token budgets). |
+| `max`    | Opus 4.8, Opus 4.7, Opus 4.6, Sonnet 4.6 (and Claude Mythos Preview) | Absolute maximum capability. Reserve for genuinely frontier problems; often overthinks on structured-output tasks. |
 
 ### Opus 4.7 per-level guidance
 
@@ -148,6 +166,10 @@ Anthropic publishes per-level recommendations specifically for Opus 4.7 — use 
 | `high`   | Advanced use cases that still need a balance of intelligence and token consumption. Often the sweet spot balancing quality and token efficiency. |
 | `xhigh`  | Recommended starting point for coding and agentic work, and exploratory tasks (repeated tool calling, detailed web search, knowledge-base search). Expect meaningfully higher token usage than `high`. |
 | `max`    | Reserve for genuinely frontier problems. On most workloads, `max` adds significant cost for small quality gains; on structured-output or less intelligence-sensitive tasks it can overthink. |
+
+### Opus 4.8 per-level guidance
+
+Opus 4.8 inherits Opus 4.7's effort behavior verbatim: the API default is `high`, **start at `xhigh` for coding and agentic work**, step down to `medium`/`low` only when evals show the lower level holds quality. Like Opus 4.7, Opus 4.8 uses adaptive thinking only — manual extended thinking (`thinking: {type: "enabled", budget_tokens: N}`) is not supported and returns a 400; effort is the control. At `xhigh`/`max`, set a large `max_tokens` (64k is a reasonable start) so the model has room to think and act across subagents and tool calls.
 
 ### Sonnet 4.6 per-level guidance
 
@@ -177,7 +199,7 @@ Effort shifts tool-call behavior, not just reasoning depth:
 ### `budget_tokens` deprecation on Opus 4.6 / Sonnet 4.6
 
 - On **Opus 4.6** and **Sonnet 4.6**, `thinking: {type: "enabled", budget_tokens: N}` is still accepted but is **deprecated** and will be removed in a future model release. Use `effort` with adaptive thinking (`thinking: {type: "adaptive"}`) as the replacement.
-- **Opus 4.7** has already dropped manual extended thinking entirely (see note above).
+- **Opus 4.7 and Opus 4.8** have already dropped manual extended thinking entirely (see note above) — both use adaptive thinking with effort as the control.
 - **Opus 4.5 and earlier Claude 4 models** continue to use manual thinking; effort works alongside the token budget.
 - **Claude Mythos Preview** uses adaptive thinking by default — no `thinking` configuration is required, and `thinking: {type: "disabled"}` is rejected. Effort controls thinking depth the same way as on Opus 4.7 and Opus 4.6.
 
@@ -255,12 +277,17 @@ Give the advice serious weight. If you follow a step and it fails empirically, o
 If you've already retrieved data pointing one way and the advisor points another: don't silently switch. Surface the conflict in one more advisor call — "I found X, you suggest Y, which constraint breaks the tie?" The advisor saw your evidence but may have underweighted it; a reconcile call is cheaper than committing to the wrong branch.
 ```
 
-### Conciseness Instruction
-Cuts total advisor output tokens by roughly 35-45% without changing call frequency:
+### Trimming advisor output length (updated technique)
+Advisor output is the advisor's largest cost driver, and `max_tokens` does not bound it. Anthropic's current guidance places the length instruction in the **user message**, addressed to the advisor in the **second person** — not a third-person line in the system prompt. The advisor sees both the system prompt and user messages as quoted context about the executor's task, and follows instructions addressed directly to it far more reliably:
 
 ```
-The advisor should respond in under 100 words and use enumerated steps, not explanations.
+(Advisor: please keep your guidance under 80 words — I need a focused starting point, not a comprehensive plan.)
 ```
+
+Notes:
+- This can be prefixed programmatically by the agent framework before sending the request. The limit is a soft constraint — the advisor occasionally exceeds it, so ask for ~80% of your true ceiling.
+- In Anthropic's testing this line also *increased* how often the executor consulted the advisor, but the net effect was still lower total cost (more consults, each shorter).
+- Supersedes the older third-person system-prompt phrasing ("The advisor should respond in under 100 words…"). The playground's "Precise" system-prompt preset still uses the older system-prompt line; a future version may move it to the user-message form.
 
 ---
 
@@ -347,10 +374,13 @@ Verified against `https://platform.claude.com/docs/en/about-claude/pricing` (Ant
 
 | Model            | Input / MTok | Output / MTok | Notes |
 |------------------|--------------|---------------|-------|
+| Claude Opus 4.8  | $5           | $25           | Same Opus-tier rate. New tokenizer (Opus 4.7 and later) — may use up to ~35% more tokens for the same text. Current default advisor + the playground's advisor/judge. |
 | Claude Opus 4.7  | $5           | $25           | New tokenizer — may use up to ~35% more tokens for the same text. Effective cost higher than sticker. |
 | Claude Opus 4.6  | $5           | $25           | Opus-tier pricing dropped from the old $15/$75 at some point; this file previously carried the stale number. |
 | Claude Sonnet 4.6 | $3          | $15           | |
 | Claude Haiku 4.5 | $1           | $5            | Does not support `effort` parameter. |
+
+Cache multipliers (all Opus-tier models incl. 4.8): 5-minute write 1.25× ($6.25), 1-hour write 2× ($10), cache read 0.1× ($0.50). Batch API: 50% off ($2.50 in / $12.50 out).
 
 Cache multipliers: 5-minute cache write = 1.25× base input; 1-hour cache write = 2× base input; cache read (hit) = 0.1× base input.
 
@@ -360,22 +390,32 @@ Data residency (US-only via `inference_geo`): 1.1× multiplier on all token cate
 
 ### Long-context pricing
 
-Claude Mythos Preview, Opus 4.7, Opus 4.6, and Sonnet 4.6 include the **full 1M-token context window at standard pricing** — no premium tier beyond 200k tokens. Prior Claude generations with 1M-token support charged a premium for tokens above the 200k threshold; these four do not.
+Claude Mythos Preview, Opus 4.8, Opus 4.7, Opus 4.6, and Sonnet 4.6 include the **full 1M-token context window at standard pricing** — no premium tier beyond 200k tokens. Prior Claude generations with 1M-token support charged a premium for tokens above the 200k threshold; these four do not.
 
 ### Tool-use system-prompt overhead
 
-Enabling tool use adds a hidden system-prompt overhead to the first executor iteration's `input_tokens`. Verified on Opus 4.7, Opus 4.6, Sonnet 4.6, and Haiku 4.5:
+Enabling tool use adds a hidden system-prompt overhead to the first executor iteration's `input_tokens`. Anthropic now publishes this **per model** (it varies significantly — the old flat 346/313 figure this file previously carried is superseded):
 
-| `tool_choice` | Overhead |
-|---------------|----------|
-| `auto`, `none` | 346 tokens |
-| `any`, `tool`  | 313 tokens |
+| Model | `auto` / `none` | `any` / `tool` |
+|-------|-----------------|----------------|
+| Opus 4.8 | 290 | 410 |
+| Opus 4.7 | 675 | 804 |
+| Opus 4.6 | 497 | 589 |
+| Sonnet 4.6 | 497 | 589 |
+| Haiku 4.5 | 496 | 588 |
 
 Informational only — the playground uses default (`auto`) behavior and displays the overhead as part of the baseline input token count.
 
-### Fast mode (Opus 4.6 and Opus 4.7, beta research preview)
+### Fast mode (Opus 4.6, Opus 4.7, Opus 4.8 — beta research preview)
 
-Opus 4.6 and Opus 4.7 both offer a "fast mode" beta at 6× standard pricing — $30 / MTok input, $150 / MTok output. Applies across the full context window including above 200k tokens. **Not available with Batch API** or on Claude Platform on AWS. Tracked here because Opus 4.7 is the playground's advisor model and a valid executor; the playground itself does not currently expose fast mode.
+Fast mode (significantly faster output at premium pricing) is offered on Opus 4.6, Opus 4.7, and Opus 4.8 — but the multipliers differ by model:
+
+| Model              | Input / MTok | Output / MTok | Multiplier vs standard |
+|--------------------|--------------|---------------|------------------------|
+| Opus 4.6 / Opus 4.7 | $30         | $150          | ~6× |
+| Opus 4.8           | $10          | $50           | ~2× |
+
+Opus 4.8's fast mode is materially cheaper than 4.6/4.7's. Fast mode applies across the full context window including above 200k tokens. **Not available with Batch API** or on Claude Platform on AWS. Prompt-caching and data-residency multipliers stack on top. Tracked here because Opus 4.8/4.7 are the playground's advisor models and valid executors; the playground itself does not currently expose fast mode.
 
 ### Regional endpoint premium (non-Anthropic platforms)
 

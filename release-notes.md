@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.8.0 — Advisor Tool API Catch-up (Opus 4.8) (2026-05-29)](#v180--advisor-tool-api-catch-up-opus-48---2026-05-29)
 - [v1.7.0 — Sample Prompts Library (2026-05-14)](#v170--sample-prompts-library---2026-05-14)
 - [v1.6.2 — Documentation Refresh (Patch) (2026-05-14)](#v162--documentation-refresh-patch---2026-05-14)
 - [v1.6.1 — Documentation Update (Patch) (2026-04-20)](#v161--documentation-update-patch---2026-04-20)
@@ -15,6 +16,37 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.8.0 — Advisor Tool API Catch-up (Opus 4.8) - 2026-05-29
+
+## Overview
+Brings the playground current with Anthropic's advisor tool docs as of the 2026-05-29 review. The driver is **Claude Opus 4.8 (`claude-opus-4-8`)**, now Anthropic's default advisor model and a new executor option. Per Anthropic's rule — *"the advisor must be at least as capable as the executor"* — every executor below 4.8 (Haiku 4.5, Sonnet 4.6, Opus 4.6, Opus 4.7) accepts either Opus 4.7 or Opus 4.8 as advisor, while the Opus 4.8 executor accepts **only** Opus 4.8. The bigger structural change underneath: all model facts now live in a single **`public/models.json`** registry read by both the client and the server, so adding or changing a model is a one-file data edit with no code change in either runtime.
+
+## Key Features
+- **`public/models.json` — single source of truth.** A new registry holds every model's `provider`, role flags (`executor` / `advisor` / `eval`), `label`, `price`, `aliases`, `effort` levels, and valid `advisors`. The client `fetch`es it at startup; the server reads the same file at boot. The executor / advisor / evaluator dropdowns, the price lookup, the effort options, the executor→advisor pairing, and the server's judge selection are **all derived from it**.
+- **Claude Opus 4.8 added** as both an executor and an advisor (and the evaluator judge). It's preselected as the default advisor, mirroring Anthropic's current code samples.
+- **Executor→advisor pairing guard.** The advisor dropdown grays out (disables) any advisor invalid for the current executor, driven by `models.json` (an explicit mirror of Anthropic's compatibility table, not a capability-rank guess). When the executor is Opus 4.8, the Opus 4.7 advisor option is disabled and the selection falls back to 4.8 — with a dynamic, registry-built hint explaining why. Invalid pairs (which Anthropic rejects with `400`) are never sent.
+- **`xhigh` effort extended to Opus 4.8.** Effort options are now rebuilt per-executor from `MODELS[executor].effort`. `xHigh` surfaces for both Opus 4.7 and Opus 4.8; Haiku still shows a disabled "n/a". The hardcoded `isOpus47` / `isHaiku` / `ensureXhighOption` branches are gone — the effort dropdown is data-driven, and the demotion/restore behavior is now model-agnostic.
+- **Data-driven evaluator judge.** The Anthropic judge bumps to Opus 4.8. The `EVAL_MODEL_ANTHROPIC` / `EVAL_MODEL_OPENAI` server constants are retired; the server now resolves the judge from the `eval`-tagged `models.json` entry whose `provider` matches the request. The eval-provider dropdown is generated from those entries.
+
+## Enhancements
+- **Hard error state for a load-bearing config.** Unlike the optional `sample-prompts.json`, `models.json` is required — on fetch/parse failure the client shows a clear error banner and disables the config controls rather than degrading silently or falling back to a baked-in registry. The server fails fast at startup if the file is missing or malformed.
+- **`label` field for future friendly names.** Each model carries a `label` (equal to its raw API id for now) so display names can later be changed in `models.json` with zero code change. The raw model id remains the value sent to the API and echoed in Code View.
+
+## Reference Doc & Documentation
+- `docs/reference/claude-advisor-tool-updates.md`: 5-row compatibility matrix; current-status executors/advisors updated; obsolete Opus 4.6 "grace period as advisor" language removed; effort-availability table updated (`xhigh` on 4.7 + 4.8; `max` adds 4.8) with an Opus 4.8 per-level note; Opus 4.8 added to the Pricing Snapshot; **fast mode corrected** (Opus 4.8 = $10/$50 ~2×, vs Opus 4.6/4.7 $30/$150 ~6×); **conciseness guidance updated** to Anthropic's current user-message, second-person technique (~80 words); **tool-use system-prompt overhead** replaced with the published per-model figures (superseding the flat 346/313). "Last reviewed" → 2026-05-29.
+- New **"Observed / undocumented behavior"** subsection in the reference doc: the `advisor_20260301` API was confirmed (direct API call, 2026-05-30) to accept **Sonnet 4.6 and Opus 4.6 as advisors** — beyond Anthropic's documented {Opus 4.7, Opus 4.8} set — as long as the advisor is at least as capable as the executor. Recorded separately from the authoritative table and intentionally **not** exposed in the playground UI, since it's undocumented and could change.
+- README: executor/advisor/judge model lists and per-eval cost line updated for Opus 4.8; version badge bumped.
+
+## Bug Fixes
+- None — additive feature plus an internal refactor; no prior behavior intentionally changed.
+
+## Other Notes
+- **OpenAI evaluator unchanged.** `gpt-5.5` ($5 / $0.50 / $30) is current and simply migrates into `models.json` as an `eval`-only entry. No newer GPT-5-series flagship has appeared.
+- **Opus 4.6 kept as an executor** (still documented/supported); only its obsolete advisor-grace-period language was removed.
+- **No advisor chat-path changes.** The server still forwards the client's executor, advisor model, and effort verbatim; its only new responsibility is reading `models.json` and resolving the judge from it.
 
 ---
 

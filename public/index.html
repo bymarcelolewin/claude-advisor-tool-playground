@@ -144,12 +144,10 @@
             <div class="setting full">
               <label for="eval-provider">
                 Evaluator provider
-                <span class="setting-hint">Anthropic uses <code>claude-opus-4-7</code> at <code>high</code> effort (the API default). OpenAI uses <code>gpt-5.5</code> at its default reasoning level. Evaluator effort is fixed — the Config Models <strong>Effort</strong> setting applies to the executor only, not to the judge.</span>
+                <span class="setting-hint">Anthropic uses <code>claude-opus-4-8</code> at <code>high</code> effort (the API default). OpenAI uses <code>gpt-5.5</code> at its default reasoning level. Evaluator effort is fixed — the Config Models <strong>Effort</strong> setting applies to the executor only, not to the judge.</span>
               </label>
-              <select id="eval-provider">
-                <option value="anthropic" selected>Anthropic · claude-opus-4-7</option>
-                <option value="openai">OpenAI · gpt-5.5</option>
-              </select>
+              <!-- options generated from /models.json at runtime (eval-tagged models; see populateModelDropdowns) -->
+              <select id="eval-provider"></select>
             </div>
 
             <div class="setting full" id="openai-key-wrapper" style="display: none">
@@ -238,14 +236,11 @@
         <div class="config-panel">
           <div class="config-row">
             <label class="config-label">EXECUTOR</label>
-            <select id="executor" class="config-select">
-              <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
-              <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
-              <option value="claude-opus-4-6">claude-opus-4-6</option>
-              <option value="claude-opus-4-7">claude-opus-4-7</option>
-            </select>
+            <!-- options generated from /models.json at runtime (see populateModelDropdowns) -->
+            <select id="executor" class="config-select"></select>
             <label class="config-label config-label-inline">EFFORT</label>
-            <select id="effort" class="config-select config-select-narrow" title="Controls thinking depth and overall token spend. Applies to the executor, not the advisor sub-inference. Not supported on Haiku 4.5. xHigh is Opus 4.7 only.">
+            <!-- options rebuilt per-executor from MODELS[executor].effort (see rebuildEffortOptions) -->
+            <select id="effort" class="config-select config-select-narrow" title="Controls thinking depth and overall token spend. Applies to the executor, not the advisor sub-inference. Available levels depend on the selected executor.">
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high" selected>High</option>
@@ -254,9 +249,8 @@
           </div>
           <div class="config-row">
             <label class="config-label">ADVISOR</label>
-            <select id="advisor" class="config-select">
-              <option value="claude-opus-4-7" selected>claude-opus-4-7</option>
-            </select>
+            <!-- options generated from /models.json at runtime (see populateModelDropdowns) -->
+            <select id="advisor" class="config-select"></select>
           </div>
           <div class="config-row" title="Run the same prompt in parallel against additional baselines. Costs 2× or 3× per message.">
             <label class="config-label">MODE</label>

@@ -1,0 +1,60 @@
+{
+  "claude-haiku-4-5-20251001": {
+    "provider": "anthropic",
+    "label": "Claude Haiku 4.5",
+    "price": { "in": 1.0, "out": 5.0 },
+    "executor": true,
+    "advisor": false,
+    "eval": false,
+    "effort": [],
+    "advisors": ["claude-opus-4-7", "claude-opus-4-8"]
+  },
+  "claude-sonnet-4-6": {
+    "provider": "anthropic",
+    "label": "Claude Sonnet 4.6",
+    "price": { "in": 3.0, "out": 15.0 },
+    "executor": true,
+    "advisor": false,
+    "eval": false,
+    "effort": ["low", "medium", "high", "max"],
+    "advisors": ["claude-opus-4-7", "claude-opus-4-8"]
+  },
+  "claude-opus-4-6": {
+    "provider": "anthropic",
+    "label": "Claude Opus 4.6",
+    "price": { "in": 5.0, "out": 25.0 },
+    "executor": true,
+    "advisor": false,
+    "eval": false,
+    "effort": ["low", "medium", "high", "max"],
+    "advisors": ["claude-opus-4-7", "claude-opus-4-8"]
+  },
+  "claude-opus-4-7": {
+    "provider": "anthropic",
+    "label": "Claude Opus 4.7",
+    "price": { "in": 5.0, "out": 25.0 },
+    "executor": true,
+    "advisor": true,
+    "eval": false,
+    "effort": ["low", "medium", "high", "xhigh", "max"],
+    "advisors": ["claude-opus-4-7", "claude-opus-4-8"]
+  },
+  "claude-opus-4-8": {
+    "provider": "anthropic",
+    "label": "Claude Opus 4.8",
+    "price": { "in": 5.0, "out": 25.0 },
+    "executor": true,
+    "advisor": true,
+    "eval": true,
+    "effort": ["low", "medium", "high", "xhigh", "max"],
+    "advisors": ["claude-opus-4-8"]
+  },
+  "gpt-5.5": {
+    "provider": "openai",
+    "label": "GPT 5.5",
+    "price": { "in": 5.0, "cachedIn": 0.5, "out": 30.0 },
+    "executor": false,
+    "advisor": false,
+    "eval": true
+  }
+}

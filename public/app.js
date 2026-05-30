@@ -106,17 +106,25 @@ function detectSystemPromptPreset(text) {
 }
 
 // ============================================================================
-// Pricing (rough public list prices, per 1M tokens)
+// Model registry — single source of truth, loaded from /models.json at
+// bootstrap and shared with the server. Populated by bootstrap() (end of file)
+// before any UI is generated. All dropdowns, prices, effort options, and the
+// executor→advisor pairing derive from this object.
 // ============================================================================
-const PRICES = {
-  "claude-haiku-4-5-20251001": { in: 1.0, out: 5.0 },
-  "claude-haiku-4-5":          { in: 1.0, out: 5.0 },
-  "claude-sonnet-4-6":         { in: 3.0, out: 15.0 },
-  "claude-opus-4-6":           { in: 5.0, out: 25.0 },
-  "claude-opus-4-7":           { in: 5.0, out: 25.0 },
-  // OpenAI prices — verified against https://developers.openai.com/api/docs/pricing
-  "gpt-5.5":                   { in: 5.0, out: 30.0 },
-};
+let MODELS = {};
+
+// Pricing lookup (per 1M tokens), derived from MODELS at bootstrap. Each
+// model's `aliases` (e.g. the undated Haiku id that can appear in usage.model)
+// are registered so cost math resolves regardless of which form the API returns.
+let PRICES = {};
+function buildPrices() {
+  PRICES = {};
+  for (const [id, m] of Object.entries(MODELS)) {
+    if (!m.price) continue;
+    PRICES[id] = m.price;
+    for (const alias of m.aliases || []) PRICES[alias] = m.price;
+  }
+}
 const CACHE_READ_MULT = 0.1;
 const CACHE_WRITE_MULT = 1.25;
 
@@ -881,42 +889,91 @@ function setSelectIfValid(selectEl, value) {
   }
 }
 
+// ============================================================================
+// Model dropdown generation (from MODELS)
+// ============================================================================
+// Defaults for first-load (no persisted selection). Executor mirrors the value
+// that used to carry `selected` in the static HTML; advisor defaults to the
+// model Anthropic now ships as the default in its code samples.
+const EXECUTOR_DEFAULT = "claude-sonnet-4-6";
+const ADVISOR_DEFAULT = "claude-opus-4-8";
+
+function providerName(p) {
+  if (p === "anthropic") return "Anthropic";
+  if (p === "openai") return "OpenAI";
+  return p ? p[0].toUpperCase() + p.slice(1) : "";
+}
+
+function fillSelect(selectEl, entries, valueFn, labelFn, selectedValue) {
+  selectEl.innerHTML = "";
+  for (const [id, m] of entries) {
+    const opt = document.createElement("option");
+    opt.value = valueFn(id, m);
+    opt.textContent = labelFn(id, m);
+    if (opt.value === selectedValue) opt.selected = true;
+    selectEl.appendChild(opt);
+  }
+}
+
+// Build the executor / advisor / evaluator dropdowns from MODELS. Called once
+// at bootstrap, after MODELS is loaded and before applySettings restores the
+// user's saved selections.
+function populateModelDropdowns() {
+  const all = Object.entries(MODELS);
+  const idVal = (id) => id;
+  const labelOf = (id, m) => m.label || id;
+  fillSelect(executorEl, all.filter(([, m]) => m.executor), idVal, labelOf, EXECUTOR_DEFAULT);
+  fillSelect(advisorEl, all.filter(([, m]) => m.advisor), idVal, labelOf, ADVISOR_DEFAULT);
+  // Eval-provider dropdown: value = provider (so updateOpenAIKeyVisibility and
+  // the eval request payload stay provider-keyed); one option per eval model.
+  fillSelect(
+    evalProviderEl,
+    all.filter(([, m]) => m.eval),
+    (id, m) => m.provider,
+    (id, m) => `${providerName(m.provider)} · ${m.label || id}`,
+    "anthropic",
+  );
+}
+
 function applySettings(s) {
   if (s.apiKey != null) apiKeyEl.value = s.apiKey;
   setSelectIfValid(executorEl, s.executor);
   setSelectIfValid(advisorEl, s.advisor);
+  savedAdvisorValue = advisorEl.value;
   setSelectIfValid(modeEl, s.mode);
   if (s.maxTokens) maxTokensEl.value = s.maxTokens;
   setSelectIfValid(advisorCachingEl, s.advisorCaching);
   if (s.maxUses != null && s.maxUses !== "") maxUsesEl.value = s.maxUses;
-  // xhigh only lives in the dropdown when executor is Opus 4.7 (inserted by
-  // updateEffortAvailability). At init, updateEffortAvailability hasn't run
-  // yet, so ensure the option exists before we try to select it.
-  if (s.effort === "xhigh" && executorEl.value === "claude-opus-4-7") {
-    ensureXhighOption();
-  }
-  setSelectIfValid(effortEl, s.effort);
+  // Effort options are rebuilt per-executor by updateEffortAvailability (called
+  // right after applySettings in bootstrap). Record the saved effort as the
+  // user's last explicit choice; the availability pass selects or demotes it.
+  if (s.effort) savedEffortValue = s.effort;
   systemEl.value = s.systemPrompt || SYSTEM_PROMPT_RECOMMENDED;
   if (s.customSystemPrompt) customSystemPromptText = s.customSystemPrompt;
-  if (s.evalProvider) evalProviderEl.value = s.evalProvider;
+  if (s.evalProvider) setSelectIfValid(evalProviderEl, s.evalProvider);
   if (s.openaiKey != null) openaiKeyEl.value = s.openaiKey;
   judgePromptEl.value = s.judgePrompt || DEFAULT_JUDGE_PROMPT;
 }
 
-applySettings(loadSettings());
-if (!systemEl.value) systemEl.value = SYSTEM_PROMPT_RECOMMENDED;
-if (!judgePromptEl.value) judgePromptEl.value = DEFAULT_JUDGE_PROMPT;
-// Derive the preset dropdown from whatever text is currently in the textarea.
-// Handles both first-load (defaults to Recommended) and returning users (if
-// their saved text matches a preset, the dropdown reflects it).
-systemPromptPresetEl.value = detectSystemPromptPreset(systemEl.value);
-// If the user's current prompt is "custom" and we don't have a separate saved
-// custom copy yet (e.g., first run of this version), seed it from the textarea.
-if (systemPromptPresetEl.value === "custom" && !customSystemPromptText) {
-  customSystemPromptText = systemEl.value;
+// Restore persisted settings and derive dependent UI state. Called by
+// bootstrap() AFTER the model dropdowns are generated from MODELS, so
+// setSelectIfValid sees the options it needs.
+function applyInitialSettings() {
+  applySettings(loadSettings());
+  if (!systemEl.value) systemEl.value = SYSTEM_PROMPT_RECOMMENDED;
+  if (!judgePromptEl.value) judgePromptEl.value = DEFAULT_JUDGE_PROMPT;
+  // Derive the preset dropdown from whatever text is currently in the textarea.
+  // Handles both first-load (defaults to Recommended) and returning users (if
+  // their saved text matches a preset, the dropdown reflects it).
+  systemPromptPresetEl.value = detectSystemPromptPreset(systemEl.value);
+  // If the user's current prompt is "custom" and we don't have a separate saved
+  // custom copy yet (e.g., first run of this version), seed it from the textarea.
+  if (systemPromptPresetEl.value === "custom" && !customSystemPromptText) {
+    customSystemPromptText = systemEl.value;
+  }
+  updateOpenAIKeyVisibility();
+  updateTraceColumnCount();
 }
-updateOpenAIKeyVisibility();
-updateTraceColumnCount();
 
 // When the user picks a preset, populate the textarea with that preset's text.
 // For "custom", restore their previously saved custom content (or the skeleton
@@ -956,8 +1013,13 @@ function updateOpenAIKeyVisibility() {
 // If there's no Anthropic API key stored, auto-open the Anthropic API section
 // so it's immediately visible when the user opens settings.
 const sectionAnthropicApi = $("#section-anthropic-api");
-if (!apiKeyEl.value.trim() && sectionAnthropicApi) {
-  sectionAnthropicApi.open = true;
+// NOTE: this check depends on the restored API key, so it runs in
+// runInitialOnboarding() (called from bootstrap, after applySettings) — not at
+// module-load time, when apiKeyEl is still empty.
+function maybeOpenAnthropicSection() {
+  if (!apiKeyEl.value.trim() && sectionAnthropicApi) {
+    sectionAnthropicApi.open = true;
+  }
 }
 
 // First-launch onboarding handled by the welcome slideshow below.
@@ -1021,58 +1083,52 @@ maxUsesEl.addEventListener("blur", () => {
   maxUsesEl.value = parsed == null ? "" : String(parsed);
 });
 
-// Effort availability coordinates two independent conditions:
-// 1. Haiku 4.5 doesn't support effort — dropdown disabled + shows "n/a" when
-//    Haiku is executor. The user's real effort selection is preserved and
-//    restored when they switch back to Sonnet/Opus.
-// 2. Effort is locked after the first successful turn — same reasoning as mode
-//    locking (switching mid-conversation would make turn comparisons unfair).
+// Effort availability is driven entirely by the model registry:
+//   MODELS[executor].effort lists the levels this executor supports.
+// An empty list means the model doesn't support effort at all (e.g. Haiku) —
+// the dropdown shows a disabled "n/a". Effort is also locked after the first
+// successful turn (same reasoning as mode locking). No model names are
+// hardcoded here; adding/removing levels for a model is a models.json edit.
 const EFFORT_TITLE_DEFAULT = effortEl.title;
-const EFFORT_TITLE_HAIKU = "Effort not supported for Haiku 4.5";
+const EFFORT_TITLE_NA = "Effort is not supported for this model.";
 const EFFORT_TITLE_LOCKED =
   "Effort is locked once a conversation starts. Click ＋ to start a new chat and change effort.";
 const effortRowEl = effortEl.closest(".config-row");
 let effortLocked = false;
 // Track the user's real effort selection separately from what the dropdown
-// displays, so the "n/a" state doesn't clobber their preference.
+// displays, so demotion (a model that lacks the chosen level) or the "n/a"
+// state doesn't clobber their preference.
 let savedEffortValue = effortEl.value;
 
-function ensureNaOption() {
-  if (!effortEl.querySelector('option[value="na"]')) {
-    const naOption = document.createElement("option");
-    naOption.value = "na";
-    naOption.textContent = "n/a";
-    effortEl.insertBefore(naOption, effortEl.firstChild);
+// Canonical level order + labels, used to render exactly the levels a model
+// allows in Anthropic's documented order (low, medium, high, xhigh, max).
+const EFFORT_ORDER = ["low", "medium", "high", "xhigh", "max"];
+const EFFORT_LABELS = { low: "Low", medium: "Medium", high: "High", xhigh: "xHigh", max: "Max" };
+
+// Rebuild the effort dropdown to exactly the allowed levels. Empty list ⇒ a
+// single disabled "n/a" placeholder.
+function rebuildEffortOptions(allowed) {
+  effortEl.innerHTML = "";
+  if (!allowed.length) {
+    const na = document.createElement("option");
+    na.value = "na";
+    na.textContent = "n/a";
+    effortEl.appendChild(na);
+    return;
+  }
+  for (const level of EFFORT_ORDER) {
+    if (!allowed.includes(level)) continue;
+    const opt = document.createElement("option");
+    opt.value = level;
+    opt.textContent = EFFORT_LABELS[level] || level;
+    effortEl.appendChild(opt);
   }
 }
 
-function removeNaOption() {
-  const naOption = effortEl.querySelector('option[value="na"]');
-  if (naOption) naOption.remove();
-}
-
-// xhigh is Opus 4.7-only. Insert it between "high" and "max" so the dropdown
-// stays in Anthropic's documented order (low, medium, high, xhigh, max).
-function ensureXhighOption() {
-  if (!effortEl.querySelector('option[value="xhigh"]')) {
-    const xhighOption = document.createElement("option");
-    xhighOption.value = "xhigh";
-    xhighOption.textContent = "xHigh";
-    const maxOption = effortEl.querySelector('option[value="max"]');
-    effortEl.insertBefore(xhighOption, maxOption);
-  }
-}
-
-function removeXhighOption() {
-  const xhighOption = effortEl.querySelector('option[value="xhigh"]');
-  if (xhighOption) xhighOption.remove();
-}
-
-// Track the user's last *explicit* effort selection so we can restore it
-// after a round-trip through an executor that forced a demotion (Haiku → "na",
-// non-Opus-4.7 → xhigh-to-high). Programmatic `effortEl.value = X` does NOT
-// fire "change" events, so this handler only captures user-initiated changes.
-// The synthetic "na" marker is skipped — it's not a real choice.
+// Capture the user's last *explicit* effort selection so we can restore it
+// after a round-trip through a model that forced a demotion. Programmatic
+// `effortEl.value = X` does NOT fire "change", so this only captures user
+// input. The synthetic "na" marker is skipped — it's not a real choice.
 effortEl.addEventListener("change", () => {
   if (effortEl.value !== "na") {
     savedEffortValue = effortEl.value;
@@ -1080,40 +1136,29 @@ effortEl.addEventListener("change", () => {
 });
 
 function updateEffortAvailability() {
-  const isHaiku = executorEl.value.startsWith("claude-haiku");
-  const isOpus47 = executorEl.value === "claude-opus-4-7";
+  const allowed = (MODELS[executorEl.value] && MODELS[executorEl.value].effort) || [];
   const oldEffort = effortEl.value;
 
-  // Compute what the dropdown should display based on the user's last
-  // explicit selection (savedEffortValue), with demotion applied when the
-  // current executor doesn't support that value.
-  let desired;
-  if (isHaiku) {
-    desired = "na";
-  } else if (savedEffortValue === "xhigh" && !isOpus47) {
-    desired = "high";
+  rebuildEffortOptions(allowed);
+
+  if (!allowed.length) {
+    effortEl.value = "na";
+    effortEl.disabled = true;
+    effortEl.title = effortLocked ? EFFORT_TITLE_LOCKED : EFFORT_TITLE_NA;
   } else {
-    desired = savedEffortValue || "high";
+    // Restore the last explicit choice if this model supports it; otherwise
+    // fall back to "high" (the API default) or the first allowed level.
+    const desired = allowed.includes(savedEffortValue)
+      ? savedEffortValue
+      : (allowed.includes("high") ? "high" : allowed[0]);
+    effortEl.value = desired;
+    effortEl.disabled = effortLocked;
+    effortEl.title = effortLocked ? EFFORT_TITLE_LOCKED : EFFORT_TITLE_DEFAULT;
   }
 
-  // Keep the DOM options in sync with the desired value *before* setting
-  // effortEl.value — otherwise setting to a removed option silently blanks
-  // the select.
-  if (isOpus47) ensureXhighOption(); else removeXhighOption();
-  if (isHaiku) ensureNaOption(); else removeNaOption();
-
-  effortEl.value = desired;
-  effortEl.disabled = isHaiku || effortLocked;
-  let title = EFFORT_TITLE_DEFAULT;
-  if (effortLocked) title = EFFORT_TITLE_LOCKED;
-  else if (isHaiku) title = EFFORT_TITLE_HAIKU;
-  effortEl.title = title;
-
-  // If the effort changed as a side-effect of the executor switch (demotion
-  // away from xhigh, or restoration back to it), persist the new value. The
-  // bulk auto-save listener fired on the executor change before this function
-  // ran, so it captured the stale effort value. This patch-save corrects the
-  // localStorage state so a refresh doesn't resurrect the pre-switch value.
+  // If the displayed effort changed as a side-effect of the executor switch,
+  // persist it — the bulk auto-save listener fired before this ran and captured
+  // the stale value.
   if (oldEffort !== effortEl.value) {
     saveSettings();
   }
@@ -1124,8 +1169,58 @@ function setEffortLocked(locked) {
   updateEffortAvailability();
 }
 
-executorEl.addEventListener("change", updateEffortAvailability);
-updateEffortAvailability();
+// ============================================================================
+// Advisor availability — executor → advisor pairing guard
+// ============================================================================
+// Anthropic rejects invalid executor/advisor pairs with 400. The valid set per
+// executor lives in MODELS[executor].advisors (an explicit mirror of Anthropic's
+// compatibility table, NOT a capability-rank assumption). This guard grays out
+// (disables) any advisor option invalid for the current executor and demotes
+// the selection if needed, so the bad pair is never sent.
+let savedAdvisorValue = advisorEl.value;
+let advisorLocked = false;
+
+// Capture the user's last explicit advisor choice so switching executors and
+// back restores it. Programmatic value changes don't fire "change".
+advisorEl.addEventListener("change", () => {
+  savedAdvisorValue = advisorEl.value;
+});
+
+function updateAdvisorAvailability() {
+  if (advisorLocked) return; // don't fight the first-turn lock
+  const validList = MODELS[executorEl.value] && MODELS[executorEl.value].advisors;
+  const valid =
+    Array.isArray(validList) && validList.length
+      ? validList
+      : Object.keys(MODELS).filter((id) => MODELS[id] && MODELS[id].advisor); // fail-open
+  const oldValue = advisorEl.value;
+
+  for (const opt of advisorEl.options) opt.disabled = !valid.includes(opt.value);
+
+  if (!valid.includes(advisorEl.value)) {
+    advisorEl.value = valid.includes(savedAdvisorValue) ? savedAdvisorValue : valid[valid.length - 1];
+  }
+
+  // Registry-built unavailability hint, mirroring the effort "n/a" title.
+  if (advisorRowEl) {
+    const restricted = advisorEl.options.length > valid.length;
+    if (restricted) {
+      const execLabel = (MODELS[executorEl.value] && MODELS[executorEl.value].label) || executorEl.value;
+      const advLabels = valid.map((id) => (MODELS[id] && MODELS[id].label) || id).join(", ");
+      advisorRowEl.title = `${execLabel} can only use ${advLabels} as its advisor.`;
+    } else {
+      advisorRowEl.title = "";
+    }
+  }
+
+  if (oldValue !== advisorEl.value) saveSettings();
+}
+
+// Executor change re-evaluates both the effort options and the advisor pairing.
+executorEl.addEventListener("change", () => {
+  updateEffortAvailability();
+  updateAdvisorAvailability();
+});
 
 // When the provider changes, toggle the OpenAI key field visibility
 evalProviderEl.addEventListener("change", updateOpenAIKeyVisibility);
@@ -1178,11 +1273,16 @@ const advisorRowEl = advisorEl.closest(".config-row");
 const ADVISOR_TITLE_LOCKED =
   "Advisor is locked once a conversation starts. Click ＋ to start a new chat and change advisors.";
 function setAdvisorLocked(locked) {
+  advisorLocked = locked;
   advisorEl.disabled = locked;
   if (advisorRowEl) {
     advisorRowEl.title = locked ? ADVISOR_TITLE_LOCKED : "";
     advisorRowEl.classList.toggle("locked", locked);
   }
+  // On unlock, re-apply the pairing gray-out + dynamic hint for the current
+  // executor (updateAdvisorAvailability bails while locked, so the title set
+  // above is replaced with the correct hint here).
+  if (!locked) updateAdvisorAvailability();
 }
 
 // Advisor caching is locked after the first successful turn. Anthropic's docs
@@ -2669,15 +2769,20 @@ if (factoryResetBtn) {
   });
 }
 
-// Decide whether to show the welcome on load.
-let welcomeSeen = false;
-try { welcomeSeen = localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch {}
+// Decide whether to show the welcome on load. This depends on the restored API
+// key, so it runs from bootstrap() (after applySettings) via runInitialOnboarding
+// — NOT at module-load time, when apiKeyEl is still empty.
+function runInitialOnboarding() {
+  maybeOpenAnthropicSection();
+  let welcomeSeen = false;
+  try { welcomeSeen = localStorage.getItem(WELCOME_SEEN_KEY) === "1"; } catch {}
 
-if (!welcomeSeen) {
-  openWelcome();
-} else if (!apiKeyEl.value.trim()) {
-  // Welcome was previously dismissed but key is missing — open settings directly.
-  openSettings();
+  if (!welcomeSeen) {
+    openWelcome();
+  } else if (!apiKeyEl.value.trim()) {
+    // Welcome was previously dismissed but key is missing — open settings directly.
+    openSettings();
+  }
 }
 
 // ============================================================================
@@ -3007,3 +3112,52 @@ onSamplePromptsLoaded = renderPillRow;
 if (samplePrompts.length > 0) renderPillRow();
 
 loadSamplePrompts();
+
+// ============================================================================
+// Bootstrap — load the model registry (single source of truth) from
+// /models.json BEFORE generating any model-dependent UI, then populate the
+// dropdowns, restore persisted settings, and run the availability passes.
+// models.json is load-bearing: on failure we show a hard error rather than
+// degrading silently or falling back to a baked-in registry (which would
+// reintroduce the second source of truth this design eliminates).
+// ============================================================================
+function showModelLoadError(err) {
+  console.error("Failed to load /models.json:", err);
+  const banner = document.createElement("div");
+  banner.setAttribute("role", "alert");
+  banner.style.cssText =
+    "background:#7f1d1d;color:#fff;padding:12px 16px;text-align:center;" +
+    "font:14px/1.45 system-ui,-apple-system,sans-serif;position:sticky;top:0;z-index:9999;";
+  banner.textContent =
+    "Couldn't load model configuration (models.json), so the playground can't start. " +
+    "Please refresh — if this persists, confirm the server is serving /models.json.";
+  document.body.prepend(banner);
+  // Disable everything that depends on the registry.
+  [executorEl, advisorEl, effortEl, evalProviderEl, sendBtn, inputEl].forEach((el) => {
+    if (el) el.disabled = true;
+  });
+}
+
+async function bootstrap() {
+  try {
+    const res = await fetch("/models.json", { cache: "no-cache" });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    MODELS = await res.json();
+    if (!MODELS || typeof MODELS !== "object" || !Object.keys(MODELS).length) {
+      throw new Error("models.json is empty or malformed");
+    }
+  } catch (err) {
+    showModelLoadError(err);
+    return;
+  }
+  buildPrices();
+  populateModelDropdowns();
+  applyInitialSettings();
+  updateEffortAvailability();
+  updateAdvisorAvailability();
+  // Onboarding (welcome modal / settings nudge / auto-open API section) depends
+  // on the restored API key, so it runs here — after applyInitialSettings.
+  runInitialOnboarding();
+}
+
+bootstrap();
