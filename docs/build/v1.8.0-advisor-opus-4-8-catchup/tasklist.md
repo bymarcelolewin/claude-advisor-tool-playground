@@ -66,6 +66,6 @@ Manual test pass (design §4). Run before declaring the version done.
 
 | ID  | Task | Description | Dependencies | Status | Assigned To |
 |-----|------|-------------|--------------|--------|-------------|
-| T21 | New-behavior tests | §4 items 1–5: pairing gray-out + hint + flip; switch-back restore; non-4.8 allows both; `xhigh` per model; judges run on Opus 4.8 / gpt-5.5 with correct labels + cost. | T1–T14 | 🔴 Not Started | USER |
-| T22 | Bootstrap / shared-file tests | §4 items 6–10: dropdowns render after fetch; load-failure error state; init ordering / persisted restore; server fail-fast on bad file; correct judge per provider. | T1–T14 | 🔴 Not Started | USER |
-| T23 | Regression tests | §4 items 11–16: cost for every model incl. Haiku alias + gpt-5.5; stale persisted value degrades gracefully; effort demotion/restore; locking + ＋ reset; full turn each mode; Code View reflects 4.8. | T1–T14 | 🔴 Not Started | USER |
+| T21 | New-behavior tests | §4 items 1–5: pairing gray-out + hint + flip; switch-back restore; non-4.8 allows both; `xhigh` per model; judges run on Opus 4.8 / gpt-5.5 with correct labels + cost. | T1–T14 | 🟢 Completed | USER |
+| T22 | Bootstrap / shared-file tests | §4 items 6–10: dropdowns render after fetch; load-failure error state; init ordering / persisted restore; server fail-fast on bad file; correct judge per provider. | T1–T14 | 🟢 Completed | USER |
+| T23 | Regression tests | §4 items 11–16: cost for every model incl. Haiku alias + gpt-5.5; stale persisted value degrades gracefully; effort demotion/restore; locking + ＋ reset; full turn each mode; Code View reflects 4.8. | T1–T14 | 🟢 Completed | USER |
