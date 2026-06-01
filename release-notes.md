@@ -4,6 +4,7 @@ This document lists new features, bug fixes and other changes implemented during
 
 For a comprehensive tracker of Anthropic's advisor tool API changes (including features not yet implemented in this app), see [claude-advisor-tool-updates.md](docs/reference/claude-advisor-tool-updates.md).
 
+- [v1.9.0 — Fullscreen Result Viewer (2026-05-30)](#v190--fullscreen-result-viewer---2026-05-30)
 - [v1.8.0 — Advisor Tool API Catch-up (Opus 4.8) (2026-05-29)](#v180--advisor-tool-api-catch-up-opus-48---2026-05-29)
 - [v1.7.0 — Sample Prompts Library (2026-05-14)](#v170--sample-prompts-library---2026-05-14)
 - [v1.6.2 — Documentation Refresh (Patch) (2026-05-14)](#v162--documentation-refresh-patch---2026-05-14)
@@ -16,6 +17,31 @@ For a comprehensive tracker of Anthropic's advisor tool API changes (including f
 - [v1.2.0 — Security Hardening (2026-04-11)](#v120--security-hardening---2026-04-11)
 - [v1.1.0 — Welcome Screen & Bug Fixes (2026-04-11)](#v110--welcome-screen--bug-fixes---2026-04-11)
 - [v1.0.0 — Initial Public Release (2026-04-11)](#v100--initial-public-release---2026-04-11)
+
+---
+
+# v1.9.0 — Fullscreen Result Viewer - 2026-05-30
+
+## Overview
+Every scrollable result box in the trace pane is cramped — dense JSON and long model output are read through a small window with a scrollbar. This version adds an **expand-to-fullscreen** affordance: a small expand icon in each box's top-right corner opens the same content in a full-screen popup with room to read. The inline boxes stay as compact previews. Built entirely by composing existing machinery (the Code View modal pattern, Prism, `makeCopyButton()`, the global wrap convention) — no new dependencies, no server changes.
+
+## Key Features
+- **Reusable fullscreen modal.** A single `#fullscreen-modal` that any result box opens via a shared `attachExpandButton(targetEl, { title, kind, getContent })` helper. Mirrors the Code View modal: `.open` toggle, click-outside backdrop, Esc to close, focus captured on open and returned to the triggering button on close, and a Tab focus-trap.
+- **Expand on every scrollable result surface.** The control is wired into: the **PRODUCED** model output, **Advisor advice**, the **Full I/O** REQUEST + RESPONSE JSON (inline beside the existing Copy button), and the **Evaluation reasoning**. Short metadata blocks (tool-use, error, redacted) don't get one — they don't scroll.
+- **Per-content rendering.** Three `kind`s: `text` (plain, rendered via `textContent` — XSS-safe), `json` (Prism-highlighted), and `html` (the app-built, fully-escaped evaluation-reasoning markup — never model/user text).
+- **Copy + Wrap in the modal.** The fullscreen view carries its own Copy button (reusing `makeCopyButton()`) and a Wrap toggle that inherits the global Trace "Wrap code" state on open, then can be toggled independently.
+
+## Enhancements
+- **Consistent, future-proof affordance.** Because it's one helper, any future scrollable box opts in with a single call. The floated variant (`.expand-btn-float`) pins the icon top-right over boxes without a header row; the inline variant sits beside Copy in the Full I/O header.
+- **Accessibility.** Real `<button>` with `aria-label="Expand to fullscreen"`; modal is `role="dialog" aria-modal="true"` with `aria-labelledby` the title; visible focus states; focus returns to the trigger on close; near-fullscreen layout on narrow widths.
+
+## Bug Fixes
+- None — purely additive UI feature; no existing behavior changed.
+
+## Other Notes
+- **No server changes.** Entirely `public/` (index.html + app.js + styles.css).
+- **XSS posture preserved.** The only `innerHTML` path is `kind: "html"`, used solely for the evaluation reasoning, whose every interpolated value is already `escapeHtml()`-ed where it's built. Model and user text always go through `textContent`.
+- **z-index.** The modal sits at `z-index: 300`, above settings/about/confirm/Code View, so it stacks correctly over anything.
 
 ---
 

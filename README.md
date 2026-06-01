@@ -1,6 +1,6 @@
 # Claude Advisor Tool Playground
 
-![Version](https://img.shields.io/badge/version-1.8.0-blue)
+![Version](https://img.shields.io/badge/version-1.9.0-blue)
 [![Release Notes](https://img.shields.io/badge/release%20notes-read-orange)](release-notes.md)
 [![License: MIT](https://img.shields.io/badge/license-MIT-yellow)](LICENSE)
 [![iBuildWith.ai](https://img.shields.io/badge/by-iBuildWith.ai-20c05b)](https://www.ibuildwith.ai)
@@ -296,7 +296,7 @@ This app is designed so that the server never stores any user data. Whether you 
 
 ## Digging deeper
 
-When you want to understand exactly why one branch's numbers differ from another, open any turn card and click **View full I/O (request + response)**. You'll see the exact JSON that went into `client.messages.create()` for that branch: model, system prompt, tools array, full message history, and beta header — plus the full response including `content[]` and `usage.iterations[]`. This is the primary diagnostic tool when something surprises you. As of v1.5.0 the JSON is Prism-highlighted with a copy button on each block, and a global **Wrap code** toggle in the Trace pane header controls horizontal overflow across all branches.
+When you want to understand exactly why one branch's numbers differ from another, open any turn card and click **View full I/O (request + response)**. You'll see the exact JSON that went into `client.messages.create()` for that branch: model, system prompt, tools array, full message history, and beta header — plus the full response including `content[]` and `usage.iterations[]`. This is the primary diagnostic tool when something surprises you. As of v1.5.0 the JSON is Prism-highlighted with a copy button on each block, and a global **Wrap code** toggle in the Trace pane header controls horizontal overflow across all branches. As of v1.9.0, every scrollable result box — the model output, the Full I/O request/response, and the evaluation reasoning — has an **expand icon** in its top-right corner that opens that content in a full-screen popup (with its own Copy + Wrap, Esc/click-outside/✕ to close) for easier reading.
 
 ## Code View — grab the API call for your current config
 

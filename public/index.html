@@ -389,6 +389,27 @@
       </div>
     </div>
 
+    <!-- Fullscreen result viewer modal -->
+    <div id="fullscreen-modal" class="fullscreen-modal" role="dialog" aria-modal="true" aria-labelledby="fullscreen-title">
+      <div class="fullscreen-backdrop" data-fullscreen-close></div>
+      <div class="fullscreen-card">
+        <div class="fullscreen-header">
+          <h2 id="fullscreen-title" class="fullscreen-title"></h2>
+          <div class="fullscreen-header-actions">
+            <label class="fullscreen-wrap-toggle" title="Wrap long lines (off = horizontal scroll)">
+              <input type="checkbox" id="fullscreen-wrap" checked />
+              <span>Wrap</span>
+            </label>
+            <span id="fullscreen-copy-slot"></span>
+            <button type="button" class="btn-close" data-fullscreen-close aria-label="Close fullscreen">×</button>
+          </div>
+        </div>
+        <div class="fullscreen-body" id="fullscreen-body">
+          <pre id="fullscreen-pre"><code id="fullscreen-code"></code></pre>
+        </div>
+      </div>
+    </div>
+
     <!-- About modal -->
     <div id="about-modal" class="about-modal" role="dialog" aria-modal="true">
       <div class="about-backdrop" data-about-close></div>

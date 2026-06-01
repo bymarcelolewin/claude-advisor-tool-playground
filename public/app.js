@@ -1358,6 +1358,157 @@ function makeCopyButton(getText, opts = {}) {
 // Prism-highlighted JSON code block. The wrap state is global (controlled by
 // the "Wrap code" toggle in the trace header), not per-section.
 // `copyable=false` skips the copy button (e.g. for "(unavailable)").
+// ============================================================================
+// Fullscreen result viewer (v1.9.0)
+// A single reusable modal that any scrollable result box can open via
+// attachExpandButton(). Mirrors the Code View modal pattern (.open toggle,
+// data-*-close backdrop, lastFocus restore, Esc + Tab trap).
+// ============================================================================
+const fullscreenModalEl = $("#fullscreen-modal");
+const fullscreenTitleEl = $("#fullscreen-title");
+const fullscreenBodyEl = $("#fullscreen-body");
+const fullscreenWrapEl = $("#fullscreen-wrap");
+const fullscreenCopySlotEl = $("#fullscreen-copy-slot");
+const fullscreenWrapWrapperEl = fullscreenModalEl
+  ? fullscreenModalEl.querySelector(".fullscreen-wrap-toggle")
+  : null;
+
+// Maximize / fullscreen glyph (four corners), sized to match the copy icon.
+const EXPAND_ICON_SVG =
+  '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' +
+  '<path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3"></path>' +
+  "</svg>";
+
+let fullscreenLastFocus = null;
+// Content the modal's Copy button copies — text for text/json, the rendered
+// plaintext for html (eval reasoning). Read lazily by the copy button.
+let fullscreenCopyText = "";
+let fullscreenCopyReady = false;
+
+// Lazy-create the header Copy button on first open (makeCopyButton reads
+// COPY_ICON_SVG, a const below — same TDZ-avoidance reason as Code View).
+function ensureFullscreenCopyBtn() {
+  if (fullscreenCopyReady || !fullscreenCopySlotEl) return;
+  const btn = makeCopyButton(() => fullscreenCopyText, { ariaLabel: "Copy content" });
+  fullscreenCopySlotEl.appendChild(btn);
+  fullscreenCopyReady = true;
+}
+
+function applyFullscreenWrap() {
+  if (!fullscreenBodyEl) return;
+  const pre = fullscreenBodyEl.querySelector("pre");
+  if (!pre) return;
+  const wrap = fullscreenWrapEl ? fullscreenWrapEl.checked : true;
+  pre.classList.toggle("fullscreen-nowrap", !wrap);
+}
+
+// Open the modal with content. kind: "text" (plain, textContent — XSS-safe),
+// "json" (Prism-highlighted), or "html" (pre-rendered, app-built markup only —
+// never model/user text).
+function openFullscreen({ title, kind = "text", content = "" }) {
+  if (!fullscreenModalEl) return;
+  fullscreenLastFocus = document.activeElement;
+  if (fullscreenTitleEl) fullscreenTitleEl.textContent = title || "";
+
+  fullscreenBodyEl.innerHTML = "";
+  if (kind === "html") {
+    const div = document.createElement("div");
+    div.className = "fullscreen-html";
+    div.innerHTML = content; // app-built, pre-escaped markup only
+    fullscreenBodyEl.appendChild(div);
+    fullscreenCopyText = div.textContent || "";
+    if (fullscreenWrapWrapperEl) fullscreenWrapWrapperEl.style.display = "none";
+  } else {
+    const pre = document.createElement("pre");
+    const code = document.createElement("code");
+    if (kind === "json") code.className = "language-json";
+    code.textContent = content;
+    pre.appendChild(code);
+    fullscreenBodyEl.appendChild(pre);
+    fullscreenCopyText = content;
+    if (fullscreenWrapWrapperEl) fullscreenWrapWrapperEl.style.display = "";
+    if (kind === "json" && typeof Prism !== "undefined") Prism.highlightElement(code);
+  }
+
+  // Inherit the global trace wrap state on open so the expanded view matches
+  // what the user already sees inline; they can then toggle independently.
+  if (fullscreenWrapEl && wrapTraceCodeEl) {
+    fullscreenWrapEl.checked = wrapTraceCodeEl.checked;
+  }
+  applyFullscreenWrap();
+
+  ensureFullscreenCopyBtn();
+  fullscreenModalEl.classList.add("open");
+  const closeBtn = fullscreenModalEl.querySelector("[data-fullscreen-close]");
+  if (closeBtn) closeBtn.focus();
+}
+
+function closeFullscreen() {
+  if (!fullscreenModalEl) return;
+  fullscreenModalEl.classList.remove("open");
+  if (fullscreenLastFocus && typeof fullscreenLastFocus.focus === "function") {
+    fullscreenLastFocus.focus();
+  }
+  fullscreenLastFocus = null;
+}
+
+if (fullscreenModalEl) {
+  fullscreenModalEl.querySelectorAll("[data-fullscreen-close]").forEach((el) => {
+    el.addEventListener("click", closeFullscreen);
+  });
+  if (fullscreenWrapEl) {
+    fullscreenWrapEl.addEventListener("change", applyFullscreenWrap);
+  }
+  // Esc closes; Tab is trapped within the modal while it's the topmost open
+  // dialog (it has the highest z-index, and is only ever opened from the trace).
+  document.addEventListener("keydown", (e) => {
+    if (!fullscreenModalEl.classList.contains("open")) return;
+    if (e.key === "Escape") {
+      closeFullscreen();
+      return;
+    }
+    if (e.key === "Tab") {
+      const focusable = fullscreenModalEl.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    }
+  });
+}
+
+// Attach an "expand to fullscreen" button to a scrollable result box. The box
+// (or its header) should be position:relative so the button can float top-right.
+// getContent is read lazily on click so it always reflects current content.
+function attachExpandButton(targetEl, { title, kind = "text", getContent, float = false }) {
+  if (!targetEl) return null;
+  const btn = document.createElement("button");
+  btn.type = "button";
+  btn.className = float ? "expand-btn expand-btn-float" : "expand-btn";
+  btn.setAttribute("aria-label", "Expand to fullscreen");
+  btn.title = "Expand to fullscreen";
+  btn.innerHTML = EXPAND_ICON_SVG;
+  btn.addEventListener("click", (e) => {
+    e.preventDefault();
+    e.stopPropagation(); // don't toggle a parent <details> or trigger row clicks
+    openFullscreen({
+      title,
+      kind,
+      content: typeof getContent === "function" ? getContent() : String(getContent ?? ""),
+    });
+  });
+  targetEl.appendChild(btn);
+  return btn;
+}
+
 function renderIOSection(label, jsonText, copyable) {
   const section = document.createElement("div");
   section.className = "io-section";
@@ -1372,6 +1523,7 @@ function renderIOSection(label, jsonText, copyable) {
 
   if (copyable) {
     header.appendChild(makeCopyButton(() => jsonText, { ariaLabel: `Copy ${label}` }));
+    attachExpandButton(header, { title: label, kind: "json", getContent: () => jsonText });
   }
   section.appendChild(header);
 
@@ -1631,6 +1783,34 @@ The request itself succeeded — the executor continued without further advice.<
     }
   } else {
     wrap.innerHTML = `<span class="bt">${escapeHtml(block.type)}</span><pre>${escapeHtml(JSON.stringify(block, null, 2))}</pre>`;
+  }
+
+  // Expand affordance on the substantive (scrollable) blocks only — model text
+  // and advisor advice. The short metadata blocks (tool_use, errors) don't
+  // scroll, so they don't get one.
+  let expandText = null;
+  let expandTitle = "Output";
+  if (block.type === "text") {
+    expandText = block.text || "";
+    expandTitle = "Output";
+  } else if (block.type === "advisor_tool_result" && block.content?.type === "advisor_result") {
+    expandText = block.content.text || "";
+    expandTitle = "Advisor advice";
+  }
+  if (expandText != null && expandText.trim() !== "") {
+    const content = expandText;
+    // Give the block a header row — type label (left) + expand button (right) —
+    // directly above the <pre>, mirroring the Full I/O section header. The
+    // button lives in the header, not floating over the scrollable content.
+    const bt = wrap.querySelector(".bt");
+    const pre = wrap.querySelector("pre");
+    if (bt && pre) {
+      const head = document.createElement("div");
+      head.className = "produced-head";
+      wrap.insertBefore(head, bt);
+      head.appendChild(bt); // move the type label into the header row
+      attachExpandButton(head, { title: expandTitle, kind: "text", getContent: () => content });
+    }
   }
   return wrap;
 }
@@ -2502,6 +2682,15 @@ function renderEvalPanel(turnIdx) {
 
   reasoningInner.push(`</div>`);
   reasoning.innerHTML = reasoningInner.join("");
+  // Fullscreen expand: show the reasoning content (everything after the
+  // <summary>) — app-built, fully escaped markup, so kind:"html" is safe.
+  const reasoningContentHTML = reasoningInner.slice(1).join("");
+  attachExpandButton(reasoning, {
+    title: "Evaluation reasoning",
+    kind: "html",
+    getContent: () => reasoningContentHTML,
+    float: true,
+  });
   body.appendChild(reasoning);
 
   // --- Footer: cost, duration, tokens ---
